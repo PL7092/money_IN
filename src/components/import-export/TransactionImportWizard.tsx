@@ -369,7 +369,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
       if (isAmount(part)) {
         if (!amount) {
           amount = normalizeAmount(part);
-        } else if (!isAmountString(part)) {
+        } else {
           // Second amount might be balance
           balance = normalizeAmount(part);
         }
@@ -403,16 +403,6 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   };
 
   const isAmount = (str: string): boolean => {
-    const amountPatterns = [
-      /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
-      /^[+-]?\d+[.,]\d{2}$/,
-      /^[+-]?\d+$/
-    ];
-    
-    return amountPatterns.some(pattern => pattern.test(str));
-  };
-
-  const isAmountString = (str: string): boolean => {
     const amountPatterns = [
       /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
       /^[+-]?\d+[.,]\d{2}$/,
