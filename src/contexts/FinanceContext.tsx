@@ -201,6 +201,10 @@ interface FinanceContextType {
   transactions: Transaction[];
   accounts: Account[];
   budgets: Budget[];
+  getCurrentMonthBudgets: () => Budget[];
+  hasCurrentMonthBudgets: () => boolean;
+  createBudgetFromPrevious: (previousBudget: Budget) => void;
+  getPreviousMonthBudgets: () => Budget[];
   recurringTransactions: RecurringTransaction[];
   assets: Asset[];
   savingsGoals: SavingsGoal[];
@@ -379,9 +383,13 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         limit: 400.00,
         spent: 245.80,
         period: 'monthly',
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-        alerts: true
+        alerts: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
       {
         id: '2',
@@ -389,9 +397,13 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         limit: 200.00,
         spent: 125.00,
         period: 'monthly',
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-        alerts: true
+        alerts: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ];
 
@@ -652,8 +664,14 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
 
     // Update budget spent amount (only for expenses, not transfers)
     if (transaction.type === 'expense') {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
       setBudgets(prev => prev.map(budget =>
-        budget.category === transaction.category
+        budget.category === transaction.category && 
+        budget.month === currentMonth && 
+        budget.year === currentYear
           ? { ...budget, spent: budget.spent + transaction.amount }
           : budget
       ));
@@ -695,8 +713,14 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
 
       // Revert budget spent amount (only for expenses, not transfers)
       if (transaction.type === 'expense') {
+        const transactionDate = new Date(transaction.date);
+        const transactionMonth = transactionDate.getMonth();
+        const transactionYear = transactionDate.getFullYear();
+        
         setBudgets(prev => prev.map(budget =>
-          budget.category === transaction.category
+          budget.category === transaction.category &&
+          budget.month === transactionMonth &&
+          budget.year === transactionYear
             ? { ...budget, spent: Math.max(0, budget.spent - transaction.amount) }
             : budget
         ));
@@ -736,23 +760,75 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     setAccounts(prev => prev.filter(account => account.id !== id));
   };
 
-  const addBudget = (budget: Omit<Budget, 'id' | 'spent'>) => {
+  const addBudget = (budget: Omit<Budget, 'id' | 'spent' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date();
     const newBudget: Budget = {
       ...budget,
       id: Date.now().toString(),
-      spent: 0
+      spent: 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
     };
     setBudgets(prev => [...prev, newBudget]);
   };
 
   const updateBudget = (id: string, updatedBudget: Partial<Budget>) => {
     setBudgets(prev => prev.map(budget =>
-      budget.id === id ? { ...budget, ...updatedBudget } : budget
+      budget.id === id ? { ...budget, ...updatedBudget, updatedAt: new Date().toISOString() } : budget
     ));
   };
 
   const deleteBudget = (id: string) => {
     setBudgets(prev => prev.filter(budget => budget.id !== id));
+  };
+
+  const getCurrentMonthBudgets = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return budgets.filter(budget => 
+      budget.month === currentMonth && budget.year === currentYear
+    );
+  };
+
+  const hasCurrentMonthBudgets = () => {
+    return getCurrentMonthBudgets().length > 0;
+  };
+
+  const getPreviousMonthBudgets = () => {
+    const now = new Date();
+    let prevMonth = now.getMonth() - 1;
+    let prevYear = now.getFullYear();
+    
+    if (prevMonth < 0) {
+      prevMonth = 11;
+      prevYear -= 1;
+    }
+    
+    return budgets.filter(budget => 
+      budget.month === prevMonth && budget.year === prevYear
+    );
+  };
+
+  const createBudgetFromPrevious = (previousBudget: Budget) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const newBudget: Budget = {
+      ...previousBudget,
+      id: Date.now().toString(),
+      month: currentMonth,
+      year: currentYear,
+      spent: 0,
+      startDate: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
+      endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+    
+    setBudgets(prev => [...prev, newBudget]);
   };
 
   const addRecurringTransaction = (transaction: Omit<RecurringTransaction, 'id'>) => {
@@ -1110,6 +1186,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       entities,
       categories,
       aiRules,
+      getCurrentMonthBudgets,
+      hasCurrentMonthBudgets,
+      createBudgetFromPrevious,
+      getPreviousMonthBudgets,
       addTransaction,
       updateTransaction,
       deleteTransaction,

@@ -56,8 +56,8 @@ export const BudgetManager = () => {
               <Target className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Total de Orçamentos</p>
-              <p className="text-2xl font-bold text-gray-900">{budgets.length}</p>
+              <p className="text-sm text-gray-600">Orçamentos ({currentMonthName})</p>
+              <p className="text-2xl font-bold text-gray-900">{displayBudgets.length}</p>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@ export const BudgetManager = () => {
             <div>
               <p className="text-sm text-gray-600">Dentro do Limite</p>
               <p className="text-2xl font-bold text-gray-900">
-                {budgets.filter(b => (b.spent / b.limit) * 100 < 80).length}
+                {displayBudgets.filter(b => (b.spent / b.limit) * 100 < 80).length}
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export const BudgetManager = () => {
             <div>
               <p className="text-sm text-gray-600">Excedidos</p>
               <p className="text-2xl font-bold text-gray-900">
-                {budgets.filter(b => (b.spent / b.limit) * 100 >= 100).length}
+                {displayBudgets.filter(b => (b.spent / b.limit) * 100 >= 100).length}
               </p>
             </div>
           </div>
@@ -93,12 +93,12 @@ export const BudgetManager = () => {
 
       {/* Budget List */}
       <div className="space-y-4">
-        {budgets.length === 0 ? (
+        {displayBudgets.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
             <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum orçamento definido</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum orçamento para {currentMonthName}</h3>
             <p className="text-gray-600 mb-4">
-              Comece por criar orçamentos para controlar os seus gastos por categoria
+              Crie orçamentos para controlar os seus gastos por categoria neste mês
             </p>
             <button
               onClick={() => setShowForm(true)}
@@ -108,7 +108,7 @@ export const BudgetManager = () => {
             </button>
           </div>
         ) : (
-          budgets.map((budget) => {
+          displayBudgets.map((budget) => {
             const { status, color, icon: StatusIcon } = getBudgetStatus(budget);
             const percentage = Math.min((budget.spent / budget.limit) * 100, 100);
             const remaining = budget.limit - budget.spent;
@@ -170,8 +170,11 @@ export const BudgetManager = () => {
                     <span className="text-gray-600">
                       {remaining >= 0 ? 'Restante:' : 'Excedido:'} €{Math.abs(remaining).toFixed(2)}
                     </span>
-                    <span className="text-gray-600">
-                      {new Date(budget.startDate).toLocaleDateString('pt-PT')} - {new Date(budget.endDate).toLocaleDateString('pt-PT')}
+                    <span className="text-gray-600 capitalize">
+                      {new Date(budget.year, budget.month, 1).toLocaleDateString('pt-PT', { 
+                        month: 'long', 
+                        year: 'numeric' 
+                      })}
                     </span>
                   </div>
                 </div>

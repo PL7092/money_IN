@@ -8,11 +8,13 @@ interface BudgetFormProps {
 }
 
 export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
-  const { addBudget, updateBudget, categories } = useFinance();
+  const { addBudget, updateBudget, categories, getCurrentMonthBudgets } = useFinance();
   const [formData, setFormData] = useState({
     category: '',
     limit: '',
-    period: 'monthly' as 'monthly' | 'yearly',
+    period: 'monthly' as 'monthly',
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
     alerts: true
@@ -24,32 +26,25 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
         category: budget.category,
         limit: budget.limit.toString(),
         period: budget.period,
+        month: budget.month,
+        year: budget.year,
         startDate: budget.startDate,
         endDate: budget.endDate,
         alerts: budget.alerts
       });
     } else {
       // Auto-set end date based on period
-      updateDateRange(formData.period);
+      updateDateRange();
     }
   }, [budget]);
 
-  const updateDateRange = (period: 'monthly' | 'yearly') => {
+  const updateDateRange = () => {
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date;
-
-    if (period === 'monthly') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    } else {
-      startDate = new Date(now.getFullYear(), 0, 1);
-      endDate = new Date(now.getFullYear(), 11, 31);
-    }
+    const startDate = new Date(formData.year, formData.month, 1);
+    const endDate = new Date(formData.year, formData.month + 1, 0);
 
     setFormData(prev => ({
       ...prev,
-      period,
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0]
     }));
@@ -58,10 +53,26 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Verificar se já existe orçamento para esta categoria no mês/ano
+    const existingBudgets = getCurrentMonthBudgets();
+    const categoryExists = existingBudgets.some(b => 
+      b.category === formData.category && 
+      b.month === formData.month && 
+      b.year === formData.year &&
+      (!budget || b.id !== budget.id)
+    );
+    
+    if (categoryExists) {
+      alert('Já existe um orçamento para esta categoria neste mês.');
+      return;
+    }
+    
     const budgetData = {
       category: formData.category,
       limit: parseFloat(formData.limit),
       period: formData.period,
+      month: formData.month,
+      year: formData.year,
       startDate: formData.startDate,
       endDate: formData.endDate,
       alerts: formData.alerts
@@ -79,8 +90,15 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    if (name === 'period') {
-      updateDateRange(value as 'monthly' | 'yearly');
+    if (name === 'month' || name === 'year') {
+      const newValue = name === 'year' ? parseInt(value) : parseInt(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: newValue
+      }));
+      
+      // Update date range after state change
+      setTimeout(() => updateDateRange(), 0);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -148,18 +166,35 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Período *
+              Mês e Ano *
             </label>
-            <select
-              name="period"
-              value={formData.period}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="monthly">Mensal</option>
-              <option value="yearly">Anual</option>
-            </select>
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                name="month"
+                value={formData.month}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {new Date(2024, i, 1).toLocaleDateString('pt-PT', { month: 'long' })}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="year"
+                value={formData.year}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 5 }, (_, i) => {
+                  const year = new Date().getFullYear() + i - 1;
+                  return <option key={year} value={year}>{year}</option>;
+                })}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
