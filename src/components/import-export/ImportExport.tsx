@@ -1,20 +1,43 @@
 import React, { useState } from 'react';
 import { Upload, Download, FileText, FileSpreadsheet, File, CheckCircle, AlertCircle } from 'lucide-react';
+import { useFinance } from '../../contexts/FinanceContext';
 
 export const ImportExport = () => {
+  const { accounts } = useFinance();
   const [activeTab, setActiveTab] = useState('import');
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    setUploadedFiles(files);
-    
-    // Simulate upload process
+    if (files.length > 0) {
+      setUploadedFiles(files);
+      setShowAccountSelector(true);
+    }
+  };
+
+  const handleImportConfirm = () => {
+    if (!selectedAccount) {
+      alert('Por favor, seleccione uma conta para importar os dados.');
+      return;
+    }
+
+    setShowAccountSelector(false);
     setUploadStatus('uploading');
+    
+    // Simulate upload process with account selection
     setTimeout(() => {
       setUploadStatus('success');
+      console.log(`Importando para a conta: ${selectedAccount}`);
     }, 2000);
+  };
+
+  const handleImportCancel = () => {
+    setShowAccountSelector(false);
+    setUploadedFiles([]);
+    setSelectedAccount('');
   };
 
   const supportedFormats = [
@@ -140,19 +163,78 @@ export const ImportExport = () => {
               </label>
             </div>
 
+            {/* Account Selection Modal */}
+            {showAccountSelector && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full">
+                  <div className="p-6 border-b border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900">Seleccionar Conta para Importação</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Escolha a conta onde pretende importar as transações
+                    </p>
+                  </div>
+                  
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Conta de Destino *
+                      </label>
+                      <select
+                        value={selectedAccount}
+                        onChange={(e) => setSelectedAccount(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Seleccionar conta...</option>
+                        {accounts.filter(account => account.status === 'active').map(account => (
+                          <option key={account.id} value={account.id}>
+                            {account.name} ({account.institution}) - {account.currency}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        <strong>Ficheiros seleccionados:</strong>
+                      </p>
+                      <ul className="text-sm text-blue-600 mt-1">
+                        {uploadedFiles.map((file, index) => (
+                          <li key={index}>• {file.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3 p-6 border-t border-gray-200">
+                    <button
+                      onClick={handleImportCancel}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleImportConfirm}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Importar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Upload Status */}
             {uploadStatus !== 'idle' && (
               <div className="mt-4">
                 {uploadStatus === 'uploading' && (
                   <div className="flex items-center text-blue-600">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    Processando ficheiros...
+                    A processar ficheiros na conta seleccionada...
                   </div>
                 )}
                 {uploadStatus === 'success' && (
                   <div className="flex items-center text-green-600">
                     <CheckCircle size={16} className="mr-2" />
-                    {uploadedFiles.length} ficheiro(s) processado(s) com sucesso!
+                    {uploadedFiles.length} ficheiro(s) importado(s) com sucesso para a conta seleccionada!
                   </div>
                 )}
                 {uploadStatus === 'error' && (
@@ -244,6 +326,23 @@ export const ImportExport = () => {
           {/* Detailed Export Options */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Opções de Exportação</h3>
+            
+            {/* Account Filter for Export */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Filtrar por Conta</h4>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">Todas as contas</option>
+                {accounts.filter(account => account.status === 'active').map(account => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.institution})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Seleccione uma conta específica ou deixe em branco para exportar todas
+              </p>
+            </div>
+
             <div className="space-y-4">
               {exportOptions.map((option) => (
                 <div key={option.id} className="border border-gray-200 rounded-lg p-4">
