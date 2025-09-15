@@ -580,17 +580,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Notas
-                <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
-                  <input
-                    type="date"
-                    name="initialBalanceDate"
-                    value={formData.initialBalanceDate}
-                    onChange={handleChange}
-                    required
-                    lang="pt-PT"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </div>
           )}
@@ -613,5 +610,5 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
