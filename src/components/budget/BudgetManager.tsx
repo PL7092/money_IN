@@ -7,6 +7,17 @@ export const BudgetManager = () => {
   const { budgets, deleteBudget } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  const currentMonthName = new Date(selectedYear, selectedMonth).toLocaleDateString('pt-PT', { 
+    month: 'long', 
+    year: 'numeric' 
+  });
+
+  const displayBudgets = budgets.filter(budget => 
+    budget.month === selectedMonth && budget.year === selectedYear
+  );
 
   const handleEdit = (budget: any) => {
     setEditingBudget(budget);

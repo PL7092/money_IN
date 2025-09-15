@@ -88,9 +88,13 @@ export interface Budget {
   limit: number;
   spent: number;
   period: 'monthly' | 'yearly';
+  month: number;
+  year: number;
   startDate: string;
   endDate: string;
   alerts: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RecurringTransaction {
