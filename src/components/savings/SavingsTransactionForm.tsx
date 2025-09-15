@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface SavingsTransactionFormProps {
   goal: any;
@@ -12,9 +13,17 @@ export const SavingsTransactionForm: React.FC<SavingsTransactionFormProps> = ({ 
   const [formData, setFormData] = useState({
     amount: '',
     type: 'deposit' as 'deposit' | 'withdrawal',
-    date: new Date().toISOString().split('T')[0],
+    date: toInputDate(new Date()),
     description: ''
   });
+
+  // Configure date inputs for Portuguese locale
+  React.useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,14 +147,17 @@ export const SavingsTransactionForm: React.FC<SavingsTransactionFormProps> = ({ 
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Data *
             </label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
+                lang="pt-PT"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Description */}

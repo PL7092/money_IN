@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Target, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { BudgetForm } from './BudgetForm';
+import { formatMonthYearPT, formatMonthPT } from '../../utils/dateUtils';
 
 export const BudgetManager = () => {
   const { budgets, deleteBudget } = useFinance();
@@ -10,10 +11,7 @@ export const BudgetManager = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const currentMonthName = new Date(selectedYear, selectedMonth).toLocaleDateString('pt-PT', { 
-    month: 'long', 
-    year: 'numeric' 
-  });
+  const currentMonthName = formatMonthYearPT(new Date(selectedYear, selectedMonth));
 
   const displayBudgets = budgets.filter(budget => 
     budget.month === selectedMonth && budget.year === selectedYear
@@ -76,7 +74,7 @@ export const BudgetManager = () => {
               >
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i} value={i}>
-                    {new Date(2024, i, 1).toLocaleDateString('pt-PT', { month: 'long' })}
+                    {formatMonthPT(i)}
                   </option>
                 ))}
               </select>

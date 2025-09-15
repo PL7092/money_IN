@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Palette, Upload, FileText, FileSpreadsheet, Settings } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { formatDatePT, toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface AccountFormProps {
   account?: any;
@@ -36,7 +37,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
     type: 'checking' as 'checking' | 'savings' | 'credit' | 'investment',
     balance: '',
     initialBalance: '',
-    initialBalanceDate: new Date().toISOString().split('T')[0],
+    initialBalanceDate: toInputDate(new Date()),
     currency: 'EUR',
     institution: '',
     color: colorOptions[0],
@@ -91,7 +92,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
         type: account.type,
         balance: account.balance.toString(),
         initialBalance: account.initialBalance.toString(),
-        initialBalanceDate: account.initialBalanceDate,
+        initialBalanceDate: toInputDate(account.initialBalanceDate),
         currency: account.currency,
         institution: account.institution,
         color: account.color,
@@ -140,6 +141,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
       });
     }
   }, [account]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -571,14 +580,17 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Notas
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                  <input
+                    type="date"
+                    name="initialBalanceDate"
+                    value={formData.initialBalanceDate}
+                    onChange={handleChange}
+                    required
+                    lang="pt-PT"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
           )}

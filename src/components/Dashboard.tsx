@@ -14,6 +14,7 @@ import { ExpensesByCategory } from './charts/ExpensesByCategory';
 import { MonthlyTrend } from './charts/MonthlyTrend';
 import { RecentTransactions } from './common/RecentTransactions';
 import { BudgetOverview } from './common/BudgetOverview';
+import { formatCurrencyPT, formatDateTimePT } from '../utils/dateUtils';
 
 export const Dashboard = () => {
   const { 
@@ -36,7 +37,7 @@ export const Dashboard = () => {
   const stats = [
     {
       title: 'Saldo Total',
-      value: `€${totalBalance.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyPT(totalBalance),
       change: '+2.5%',
       changeType: 'positive' as const,
       icon: Wallet,
@@ -44,7 +45,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Receitas (Mês)',
-      value: `€${monthlyIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyPT(monthlyIncome),
       change: '+5.2%',
       changeType: 'positive' as const,
       icon: TrendingUp,
@@ -52,7 +53,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Despesas (Mês)',
-      value: `€${monthlyExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyPT(monthlyExpenses),
       change: '-3.1%',
       changeType: 'positive' as const,
       icon: TrendingDown,
@@ -60,7 +61,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Resultado Líquido',
-      value: `€${netIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyPT(netIncome),
       change: netIncome > 0 ? '+12.3%' : '-8.7%',
       changeType: netIncome > 0 ? 'positive' as const : 'negative' as const,
       icon: Target,
@@ -92,13 +93,7 @@ export const Dashboard = () => {
         <div className="text-right">
           <p className="text-sm text-gray-600">Última atualização</p>
           <p className="text-sm font-medium">
-            {new Date().toLocaleDateString('pt-PT', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
+            {formatDateTimePT(new Date())}
           </p>
         </div>
       </div>

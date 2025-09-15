@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Repeat, Calendar, Target, AlertTriangle } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface RecurringFormProps {
   recurring?: any;
@@ -61,10 +62,18 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ recurring, onClose
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       setFormData(prev => ({
         ...prev,
-        nextDate: nextMonth.toISOString().split('T')[0]
+        nextDate: toInputDate(nextMonth)
       }));
     }
   }, [recurring]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,27 +380,33 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ recurring, onClose
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Próxima Data *
                 </label>
-                <input
-                  type="date"
-                  name="nextDate"
-                  value={formData.nextDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+                <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                  <input
+                    type="date"
+                    name="nextDate"
+                    value={formData.nextDate}
+                    onChange={handleChange}
+                    required
+                    lang="pt-PT"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Data de Fim (Opcional)
                 </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+                <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    lang="pt-PT"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
           </div>

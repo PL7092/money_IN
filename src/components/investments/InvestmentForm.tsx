@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, Palette } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface InvestmentFormProps {
   investment?: any;
@@ -32,7 +33,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ investment, onCl
     color: colorOptions[0],
     initialBalance: '',
     balance: '',
-    initialBalanceDate: new Date().toISOString().split('T')[0],
+    initialBalanceDate: toInputDate(new Date()),
     investmentType: 'stocks' as any,
     symbol: '',
     quantity: '',
@@ -52,7 +53,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ investment, onCl
         color: investment.color,
         initialBalance: investment.initialBalance.toString(),
         balance: investment.balance.toString(),
-        initialBalanceDate: investment.initialBalanceDate,
+        initialBalanceDate: toInputDate(investment.initialBalanceDate),
         investmentType: investment.investmentType || 'stocks',
         symbol: details.symbol || '',
         quantity: details.quantity?.toString() || '',
@@ -63,6 +64,14 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ investment, onCl
       });
     }
   }, [investment]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,14 +325,17 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ investment, onCl
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data do Investimento Inicial *
               </label>
-              <input
-                type="date"
-                name="initialBalanceDate"
-                value={formData.initialBalanceDate}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
+              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                <input
+                  type="date"
+                  name="initialBalanceDate"
+                  value={formData.initialBalanceDate}
+                  onChange={handleChange}
+                  required
+                  lang="pt-PT"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
 

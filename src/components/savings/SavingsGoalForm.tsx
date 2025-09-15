@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Target, Calendar, DollarSign } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface SavingsGoalFormProps {
   goal?: any;
@@ -58,11 +59,19 @@ export const SavingsGoalForm: React.FC<SavingsGoalFormProps> = ({ goal, onClose 
       nextYear.setFullYear(nextYear.getFullYear() + 1);
       setFormData(prev => ({
         ...prev,
-        targetDate: nextYear.toISOString().split('T')[0],
+        targetDate: toInputDate(nextYear),
         currentAmount: '0'
       }));
     }
   }, [goal]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,14 +260,17 @@ export const SavingsGoalForm: React.FC<SavingsGoalFormProps> = ({ goal, onClose 
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data Objetivo *
               </label>
-              <input
-                type="date"
-                name="targetDate"
-                value={formData.targetDate}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                <input
+                  type="date"
+                  name="targetDate"
+                  value={formData.targetDate}
+                  onChange={handleChange}
+                  required
+                  lang="pt-PT"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
             {/* Suggestion */}

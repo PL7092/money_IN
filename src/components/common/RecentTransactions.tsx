@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { formatCurrencyPT, formatDatePT } from '../../utils/dateUtils';
 
 export const RecentTransactions = () => {
   const { transactions } = useFinance();
@@ -45,14 +46,10 @@ export const RecentTransactions = () => {
                 ? 'text-green-600' 
                 : 'text-red-600'
             }`}>
-              {transaction.type === 'income' ? '+' : '-'}€{transaction.amount.toFixed(2)}
+              {transaction.type === 'income' ? '+' : '-'}{formatCurrencyPT(transaction.amount).replace('€', '')}€
             </p>
             <p className="text-sm text-gray-500">
-              {new Date(transaction.date).toLocaleDateString('pt-PT', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              })}
+              {formatDatePT(transaction.date)}
             </p>
           </div>
         </div>

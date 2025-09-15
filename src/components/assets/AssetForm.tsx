@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Car, Home, Smartphone, Palette, Calendar, FileText } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface AssetFormProps {
   asset?: any;
@@ -40,7 +41,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
     type: 'vehicle' as 'vehicle' | 'property' | 'equipment' | 'other',
     category: '',
     value: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: toInputDate(new Date()),
     purchasePrice: '',
     depreciationRate: '0',
     currentCondition: 'good' as 'excellent' | 'good' | 'fair' | 'poor',
@@ -75,7 +76,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
         type: asset.type,
         category: asset.category || '',
         value: asset.value.toString(),
-        purchaseDate: asset.purchaseDate,
+        purchaseDate: toInputDate(asset.purchaseDate),
         purchasePrice: asset.purchasePrice?.toString() || '',
         depreciationRate: asset.depreciationRate?.toString() || '0',
         currentCondition: asset.currentCondition || 'good',
@@ -98,6 +99,14 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
       });
     }
   }, [asset]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -405,14 +414,17 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Data de Compra *
                 </label>
-                <input
-                  type="date"
-                  name="purchaseDate"
-                  value={formData.purchaseDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                  <input
+                    type="date"
+                    name="purchaseDate"
+                    value={formData.purchaseDate}
+                    onChange={handleChange}
+                    required
+                    lang="pt-PT"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div>

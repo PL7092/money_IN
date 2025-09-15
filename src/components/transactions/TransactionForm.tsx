@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Tag, MapPin } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface TransactionFormProps {
   transaction?: any;
@@ -20,7 +21,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     toAccount: '',
     assetId: '',
     savingsGoalId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: toInputDate(new Date()),
     tags: '',
     location: '',
     recurring: false
@@ -43,13 +44,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         toAccount: transaction.toAccount || '',
         assetId: transaction.assetId || '',
         savingsGoalId: transaction.savingsGoalId || '',
-        date: transaction.date,
+        date: toInputDate(transaction.date),
         tags: transaction.tags ? transaction.tags.join(', ') : '',
         location: transaction.location || '',
         recurring: transaction.recurring || false
       });
     }
   }, [transaction]);
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -522,18 +531,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data *
               </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' :
-                  formData.type === 'expense' ? 'focus:ring-red-500' :
-                  'focus:ring-blue-500'
-                }`}
-              />
+              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                  lang="pt-PT"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
+                    formData.type === 'income' ? 'focus:ring-green-500' :
+                    formData.type === 'expense' ? 'focus:ring-red-500' :
+                    'focus:ring-blue-500'
+                  }`}
+                />
+              </div>
             </div>
           </div>
 

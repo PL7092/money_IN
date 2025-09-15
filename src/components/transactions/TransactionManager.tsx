@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Tag, ArrowUpRight, ArrowDownRight, ArrowRightLeft } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { TransactionForm } from './TransactionForm';
+import { formatDatePT, configureDateInput } from '../../utils/dateUtils';
 
 export const TransactionManager = () => {
   const { transactions, deleteTransaction, categories, accounts, entities, assets, savingsGoals, recurringTransactions } = useFinance();
@@ -18,6 +19,14 @@ export const TransactionManager = () => {
     amountMin: '',
     amountMax: ''
   });
+
+  // Configure date inputs for Portuguese locale
+  React.useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const filteredTransactions = transactions
     .filter(t => {
@@ -271,23 +280,29 @@ export const TransactionManager = () => {
           {/* Date From */}
           <div>
             <label className="block text-xs text-gray-600 mb-1">Data de início</label>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                lang="pt-PT"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Date To */}
           <div>
             <label className="block text-xs text-gray-600 mb-1">Data de fim</label>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                lang="pt-PT"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Amount Min */}
@@ -393,11 +408,7 @@ export const TransactionManager = () => {
                               <> → {toAccount.name}</>
                             )}
                           </span>
-                          <span>{new Date(transaction.date).toLocaleDateString('pt-PT', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}</span>
+                          <span>{formatDatePT(transaction.date)}</span>
                           {transaction.location && (
                             <span>📍 {transaction.location}</span>
                           )}

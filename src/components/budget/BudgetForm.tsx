@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Target } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { formatMonthPT, toInputDate, configureDateInput } from '../../utils/dateUtils';
 
 interface BudgetFormProps {
   budget?: any;
@@ -15,8 +16,8 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
     period: 'monthly' as 'monthly',
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    startDate: toInputDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    endDate: toInputDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
     alerts: true
   });
 
@@ -28,8 +29,8 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
         period: budget.period,
         month: budget.month,
         year: budget.year,
-        startDate: budget.startDate,
-        endDate: budget.endDate,
+        startDate: toInputDate(budget.startDate),
+        endDate: toInputDate(budget.endDate),
         alerts: budget.alerts
       });
     } else {
@@ -45,10 +46,18 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
 
     setFormData(prev => ({
       ...prev,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
+      startDate: toInputDate(startDate),
+      endDate: toInputDate(endDate)
     }));
   };
+
+  // Configure date inputs for Portuguese locale
+  useEffect(() => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach((input) => {
+      configureDateInput(input as HTMLInputElement);
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +187,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
               >
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i} value={i}>
-                    {new Date(2024, i, 1).toLocaleDateString('pt-PT', { month: 'long' })}
+                    {formatMonthPT(i)}
                   </option>
                 ))}
               </select>
@@ -202,28 +211,34 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data de Início *
               </label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  required
+                  lang="pt-PT"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data de Fim *
               </label>
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  required
+                  lang="pt-PT"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
 
