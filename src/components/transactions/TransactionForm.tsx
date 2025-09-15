@@ -80,6 +80,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
       toAccount: formData.type === 'transfer' ? formData.toAccount : undefined,
       assetId: formData.assetId || undefined,
       savingsGoalId: formData.savingsGoalId || undefined,
+      recurringTransactionId: formData.recurringTransactionId || undefined,
       date: formData.date,
       tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
       location: formData.location || undefined,
