@@ -1218,7 +1218,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   };
 
   const processTransactionWithAI = async (description: string, amount: number): Promise<Partial<Transaction>> => {
-    // Enhanced AI processing with better logic
+    // Enhanced AI processing with Portuguese banking patterns
     const activeRules = aiRules.filter(rule => rule.active);
     
     // First, check exact rules
@@ -1283,87 +1283,199 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       };
     }
     
-    // Third, try to infer from description and amount patterns
+    // Third, enhanced Portuguese banking pattern recognition
     const descLower = description.toLowerCase();
+    const descUpper = description.toUpperCase();
     
-    // Income patterns
-    if (descLower.includes('salario') || descLower.includes('salary') || 
-        descLower.includes('ordenado') || descLower.includes('vencimento') ||
-        (amount > 1500 && (descLower.includes('transferencia') || descLower.includes('transfer')))) {
+    // Enhanced income patterns
+    if (descLower.includes('salario') || descLower.includes('salary') || descLower.includes('ordenado') || 
+        descLower.includes('vencimento') || descLower.includes('subsidio') || descLower.includes('bonus') ||
+        descLower.includes('pensao') || descLower.includes('reforma') || descLower.includes('apoio') ||
+        (amount > 1000 && (descLower.includes('transferencia') || descLower.includes('transfer') || 
+         descLower.includes('deposito') || descLower.includes('credito')))) {
       return {
-        entity: 'Empregador',
+        entity: descLower.includes('empresa') ? 'Empresa' : 'Empregador',
         category: 'Salário',
         subcategory: 'Salário Base',
-        tags: ['salario', 'mensal'],
-        aiProcessed: true,
-        confidence: 0.75
-      };
-    }
-    
-    // Expense patterns
-    if (descLower.includes('continente') || descLower.includes('pingo doce') || 
-        descLower.includes('lidl') || descLower.includes('auchan')) {
-      return {
-        entity: 'Supermercado',
-        category: 'Alimentação',
-        subcategory: 'Supermercado',
-        tags: ['supermercado', 'alimentacao'],
-        aiProcessed: true,
-        confidence: 0.8
-      };
-    }
-    
-    if (descLower.includes('galp') || descLower.includes('bp') || 
-        descLower.includes('repsol') || descLower.includes('combustivel')) {
-      return {
-        entity: 'Posto de Combustível',
-        category: 'Transporte',
-        subcategory: 'Combustível',
-        tags: ['combustivel', 'transporte'],
+        tags: ['salario', 'receita'],
         aiProcessed: true,
         confidence: 0.85
       };
     }
     
-    if (descLower.includes('netflix') || descLower.includes('spotify') || 
-        descLower.includes('amazon prime') || descLower.includes('disney')) {
+    // Enhanced Portuguese supermarket patterns
+    if (descUpper.includes('CONTINENTE') || descUpper.includes('PINGO DOCE') || 
+        descUpper.includes('LIDL') || descUpper.includes('AUCHAN') || descUpper.includes('JUMBO') ||
+        descUpper.includes('MINIPREÇO') || descUpper.includes('INTERMARCHE') || descUpper.includes('E.LECLERC')) {
+      
+      let entity = 'Supermercado';
+      if (descUpper.includes('CONTINENTE')) entity = 'Continente';
+      else if (descUpper.includes('PINGO DOCE')) entity = 'Pingo Doce';
+      else if (descUpper.includes('LIDL')) entity = 'Lidl';
+      else if (descUpper.includes('AUCHAN')) entity = 'Auchan';
+      
       return {
-        entity: 'Serviço de Streaming',
-        category: 'Entretenimento',
-        subcategory: 'Streaming',
-        tags: ['streaming', 'mensal'],
+        entity: entity,
+        category: 'Alimentação',
+        subcategory: 'Supermercado',
+        tags: ['supermercado', 'alimentacao', 'essencial'],
         aiProcessed: true,
         confidence: 0.9
       };
     }
     
-    if (descLower.includes('renda') || descLower.includes('rent') || 
-        descLower.includes('condominio') || descLower.includes('prestacao casa')) {
+    // Enhanced fuel station patterns
+    if (descUpper.includes('GALP') || descUpper.includes('BP') || descUpper.includes('REPSOL') || 
+        descUpper.includes('CEPSA') || descLower.includes('combustivel') || descLower.includes('gasolina') ||
+        descLower.includes('gasoleo') || descLower.includes('diesel')) {
+      
+      let entity = 'Posto de Combustível';
+      if (descUpper.includes('GALP')) entity = 'Galp';
+      else if (descUpper.includes('BP')) entity = 'BP';
+      else if (descUpper.includes('REPSOL')) entity = 'Repsol';
+      
+      return {
+        entity: entity,
+        category: 'Transporte',
+        subcategory: 'Combustível',
+        tags: ['combustivel', 'transporte', 'veiculo'],
+        aiProcessed: true,
+        confidence: 0.9
+      };
+    }
+    
+    // Enhanced streaming and subscription patterns
+    if (descUpper.includes('NETFLIX') || descUpper.includes('SPOTIFY') || descUpper.includes('AMAZON') ||
+        descUpper.includes('DISNEY') || descUpper.includes('HBO') || descUpper.includes('APPLE MUSIC') ||
+        descUpper.includes('YOUTUBE') || descLower.includes('streaming')) {
+      
+      let entity = 'Serviço de Streaming';
+      if (descUpper.includes('NETFLIX')) entity = 'Netflix';
+      else if (descUpper.includes('SPOTIFY')) entity = 'Spotify';
+      else if (descUpper.includes('AMAZON')) entity = 'Amazon Prime';
+      else if (descUpper.includes('DISNEY')) entity = 'Disney+';
+      
+      return {
+        entity: entity,
+        category: 'Entretenimento',
+        subcategory: 'Streaming',
+        tags: ['streaming', 'subscricao', 'mensal'],
+        aiProcessed: true,
+        confidence: 0.95
+      };
+    }
+    
+    // Enhanced housing patterns
+    if (descLower.includes('renda') || descLower.includes('rent') || descLower.includes('condominio') || 
+        descLower.includes('prestacao casa') || descLower.includes('credito habitacao') ||
+        descLower.includes('imt') || descLower.includes('imi') || descLower.includes('agua') ||
+        descLower.includes('luz') || descLower.includes('gas') || descLower.includes('eletricidade')) {
+      
+      let subcategory = 'Renda';
+      if (descLower.includes('agua')) subcategory = 'Água';
+      else if (descLower.includes('luz') || descLower.includes('eletricidade')) subcategory = 'Eletricidade';
+      else if (descLower.includes('gas')) subcategory = 'Gás';
+      else if (descLower.includes('condominio')) subcategory = 'Condomínio';
+      else if (descLower.includes('prestacao') || descLower.includes('credito')) subcategory = 'Prestação Casa';
+      
       return {
         category: 'Habitação',
-        subcategory: 'Renda',
-        tags: ['habitacao', 'mensal'],
+        subcategory: subcategory,
+        tags: ['habitacao', 'fixo'],
+        aiProcessed: true,
+        confidence: 0.85
+      };
+    }
+    
+    // Enhanced transport patterns
+    if (descUpper.includes('UBER') || descUpper.includes('BOLT') || descUpper.includes('TAXI') ||
+        descUpper.includes('METRO') || descUpper.includes('CARRIS') || descUpper.includes('CP') ||
+        descUpper.includes('FERTAGUS') || descLower.includes('transporte') || descLower.includes('bilhete')) {
+      
+      let entity = 'Transporte';
+      let subcategory = 'Transportes Públicos';
+      
+      if (descUpper.includes('UBER') || descUpper.includes('BOLT') || descUpper.includes('TAXI')) {
+        entity = 'Táxi/Uber';
+        subcategory = 'Táxi/Uber';
+      } else if (descUpper.includes('METRO') || descUpper.includes('CARRIS')) {
+        entity = 'Transportes Públicos';
+        subcategory = 'Transportes Públicos';
+      }
+      
+      return {
+        entity: entity,
+        category: 'Transporte',
+        subcategory: subcategory,
+        tags: ['transporte', 'mobilidade'],
         aiProcessed: true,
         confidence: 0.8
       };
     }
     
-    // Amount-based inference
+    // Banking and ATM patterns
+    if (descUpper.includes('MULTIBANCO') || descUpper.includes('ATM') || descUpper.includes('LEVANTAMENTO') ||
+        descUpper.includes('DEPOSITO') || descLower.includes('transferencia bancaria')) {
+      return {
+        category: 'Transferência',
+        subcategory: 'Operações Bancárias',
+        tags: ['banco', 'operacao'],
+        aiProcessed: true,
+        confidence: 0.75
+      };
+    }
+    
+    // Health patterns
+    if (descLower.includes('farmacia') || descLower.includes('hospital') || descLower.includes('clinica') ||
+        descLower.includes('medico') || descLower.includes('dentista') || descLower.includes('saude')) {
+      return {
+        category: 'Saúde',
+        subcategory: descLower.includes('farmacia') ? 'Farmácia' : 'Médico',
+        tags: ['saude', 'cuidados'],
+        aiProcessed: true,
+        confidence: 0.8
+      };
+    }
+    
+    // Restaurant patterns
+    if (descLower.includes('restaurante') || descLower.includes('cafe') || descLower.includes('bar') ||
+        descLower.includes('mcdonald') || descLower.includes('burger') || descLower.includes('pizza') ||
+        descLower.includes('kfc') || descLower.includes('telepizza')) {
+      return {
+        category: 'Alimentação',
+        subcategory: 'Restaurantes',
+        tags: ['restaurante', 'refeicao'],
+        aiProcessed: true,
+        confidence: 0.8
+      };
+    }
+    
+    // Amount-based enhanced inference
     if (amount < 5) {
       return {
         category: 'Outros',
         subcategory: 'Pequenas Despesas',
-        tags: ['pequeno'],
+        tags: ['pequeno', 'diversos'],
+        aiProcessed: true,
+        confidence: 0.6
+      };
+    }
+    
+    if (amount > 500 && amount < 1500) {
+      return {
+        category: 'Outros',
+        subcategory: 'Despesa Significativa',
+        tags: ['significativo', 'revisar'],
         aiProcessed: true,
         confidence: 0.5
       };
     }
     
-    if (amount > 500 && amount < 1000) {
+    if (amount > 1500) {
       return {
         category: 'Outros',
-        subcategory: 'Despesa Significativa',
-        tags: ['significativo'],
+        subcategory: 'Despesa Elevada',
+        tags: ['elevado', 'revisar'],
         aiProcessed: true,
         confidence: 0.4
       };

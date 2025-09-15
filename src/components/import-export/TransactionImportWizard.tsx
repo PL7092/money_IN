@@ -145,24 +145,375 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
         return parseCSVFile(file);
       case 'pdf':
         return parsePDFFile(file);
+      case 'txt':
+        return parseTextFile(file);
       default:
-        throw new Error(`Formato de ficheiro não suportado: ${fileExtension}`);
+        // Try to parse as text file for unknown extensions
+        return parseTextFile(file);
     }
   };
 
+  const parseTextFile = async (file: File): Promise<ImportedTransaction[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const parsedTransactions = parseAnyTextFormat(text);
+          resolve(parsedTransactions);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.readAsText(file);
+    });
+  };
+
+  const parseAnyTextFormat = (text: string): ImportedTransaction[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    const transactions: ImportedTransaction[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip obvious header lines
+      if (isHeaderLine(line)) continue;
+      
+      const parsedData = extractTransactionData(line);
+      if (parsedData) {
+        transactions.push({
+          id: `parsed_${i}`,
+          originalData: line,
+          parsed: parsedData,
+          aiSuggestions: { confidence: 0 },
+          userOverrides: {},
+          status: 'pending',
+          isDuplicate: false
+        });
+      }
+    }
+    
+    return transactions;
+  };
+
+  const isHeaderLine = (line: string): boolean => {
+    const lowerLine = line.toLowerCase();
+    const headerKeywords = [
+      'data', 'date', 'valor', 'amount', 'descrição', 'description', 
+      'saldo', 'balance', 'movimento', 'transaction', 'débito', 'crédito',
+      'debit', 'credit', 'conta', 'account', 'extrato', 'statement'
+    ];
+    
+    // If line contains multiple header keywords, it's likely a header
+    const keywordCount = headerKeywords.filter(keyword => lowerLine.includes(keyword)).length;
+    return keywordCount >= 2;
+  };
+
+  const extractTransactionData = (line: string): any | null => {
+    // Remove extra spaces and normalize separators
+    const cleanLine = line.replace(/\s+/g, ' ').trim();
+    
+    // Try multiple parsing strategies
+    const strategies = [
+      parseTabSeparated,
+      parseSemicolonSeparated,
+      parseSpaceSeparated,
+      parseFixedWidth,
+      parseCommaSeparated
+    ];
+    
+    for (const strategy of strategies) {
+      const result = strategy(cleanLine);
+      if (result && result.amount && result.description) {
+        return result;
+      }
+    }
+    
+    return null;
+  };
+
+  const parseTabSeparated = (line: string): any | null => {
+    const parts = line.split('\t').map(p => p.trim());
+    if (parts.length < 3) return null;
+    
+    return extractFromParts(parts);
+  };
+
+  const parseSemicolonSeparated = (line: string): any | null => {
+    const parts = line.split(';').map(p => p.trim());
+    if (parts.length < 3) return null;
+    
+    return extractFromParts(parts);
+  };
+
+  const parseCommaSeparated = (line: string): any | null => {
+    // Only try comma separation if there are enough commas and they're not decimal separators
+    const commaCount = (line.match(/,/g) || []).length;
+    if (commaCount < 2) return null;
+    
+    // Check if commas are used as decimal separators
+    const decimalPattern = /\d+,\d{2}(?:\s|$)/g;
+    const decimalMatches = line.match(decimalPattern) || [];
+    
+    // If most commas are decimal separators, don't split by comma
+    if (decimalMatches.length >= commaCount - 1) return null;
+    
+    const parts = line.split(',').map(p => p.trim());
+    return extractFromParts(parts);
+  };
+
+  const parseSpaceSeparated = (line: string): any | null => {
+    // For space-separated, we need to be more intelligent about splitting
+    // Look for patterns like: date amount description or date description amount
+    
+    const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/g;
+    const amountPattern = /([+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g;
+    
+    const dates = line.match(datePattern) || [];
+    const amounts = line.match(amountPattern) || [];
+    
+    if (dates.length === 0 || amounts.length === 0) return null;
+    
+    const date = dates[0];
+    const amount = amounts[0];
+    
+    // Extract description by removing date and amount
+    let description = line
+      .replace(date, '')
+      .replace(amount, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Remove any remaining amounts or dates
+    description = description.replace(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g, '');
+    description = description.replace(/[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}/g, '');
+    description = description.replace(/\s+/g, ' ').trim();
+    
+    if (!description) return null;
+    
+    return {
+      date: normalizeDate(date),
+      amount: normalizeAmount(amount),
+      description: description,
+      type: determineTransactionType(amount, description),
+      balance: extractBalance(line) // Try to extract balance if present
+    };
+  };
+
+  const parseFixedWidth = (line: string): any | null => {
+    // For fixed-width formats, try to identify columns by position
+    if (line.length < 20) return null;
+    
+    const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/;
+    const amountPattern = /([+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g;
+    
+    const dateMatch = line.match(datePattern);
+    const amountMatches = line.match(amountPattern) || [];
+    
+    if (!dateMatch || amountMatches.length === 0) return null;
+    
+    const date = dateMatch[0];
+    const dateIndex = line.indexOf(date);
+    
+    // Find the main transaction amount (usually the first or largest)
+    let transactionAmount = amountMatches[0];
+    let balance = null;
+    
+    // If there are multiple amounts, the last one might be the balance
+    if (amountMatches.length > 1) {
+      balance = amountMatches[amountMatches.length - 1];
+      // Use the first amount as transaction amount
+      transactionAmount = amountMatches[0];
+    }
+    
+    // Extract description (everything between date and amount)
+    const amountIndex = line.indexOf(transactionAmount);
+    const descriptionStart = dateIndex + date.length;
+    const descriptionEnd = amountIndex;
+    
+    let description = line.substring(descriptionStart, descriptionEnd).trim();
+    
+    // Clean up description
+    description = description.replace(/\s+/g, ' ').trim();
+    
+    if (!description) return null;
+    
+    return {
+      date: normalizeDate(date),
+      amount: normalizeAmount(transactionAmount),
+      description: description,
+      type: determineTransactionType(transactionAmount, description),
+      balance: balance ? normalizeAmount(balance) : null
+    };
+  };
+
+  const extractFromParts = (parts: string[]): any | null => {
+    if (parts.length < 3) return null;
+    
+    let date = null;
+    let amount = null;
+    let description = '';
+    let balance = null;
+    
+    // Identify date, amount, and description from parts
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      
+      // Check if it's a date
+      if (isDate(part) && !date) {
+        date = normalizeDate(part);
+        continue;
+      }
+      
+      // Check if it's an amount
+      if (isAmount(part)) {
+        if (!amount) {
+          amount = normalizeAmount(part);
+        } else {
+          // Second amount might be balance
+          balance = normalizeAmount(part);
+        }
+        continue;
+      }
+      
+      // Everything else is description
+      if (part && !isDate(part) && !isAmount(part)) {
+        description += (description ? ' ' : '') + part;
+      }
+    }
+    
+    if (!date || !amount || !description) return null;
+    
+    return {
+      date,
+      amount: Math.abs(amount),
+      description: description.trim(),
+      type: determineTransactionType(amount, description),
+      balance
+    };
+  };
+
+  const isDate = (str: string): boolean => {
+    const datePatterns = [
+      /^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/,
+      /^\d{2,4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/
+    ];
+    
+    return datePatterns.some(pattern => pattern.test(str));
+  };
+
+  const isAmount = (str: string): boolean => {
+    const amountPatterns = [
+      /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
+      /^[+-]?\d+[.,]\d{2}$/,
+      /^[+-]?\d+$/
+    ];
+    
+    return amountPatterns.some(pattern => pattern.test(str));
+  };
+
+  const normalizeDate = (dateStr: string): string => {
+    // Convert various date formats to YYYY-MM-DD
+    const cleanDate = dateStr.replace(/[^\d\/\-\.]/g, '');
+    const parts = cleanDate.split(/[\/\-\.]/);
+    
+    if (parts.length !== 3) return new Date().toISOString().split('T')[0];
+    
+    let [first, second, third] = parts;
+    
+    // Determine if it's DD/MM/YYYY or YYYY/MM/DD
+    if (third.length === 4) {
+      // DD/MM/YYYY or MM/DD/YYYY
+      const day = first.padStart(2, '0');
+      const month = second.padStart(2, '0');
+      const year = third;
+      return `${year}-${month}-${day}`;
+    } else if (first.length === 4) {
+      // YYYY/MM/DD
+      const year = first;
+      const month = second.padStart(2, '0');
+      const day = third.padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else {
+      // Assume DD/MM/YY
+      const day = first.padStart(2, '0');
+      const month = second.padStart(2, '0');
+      const year = third.length === 2 ? `20${third}` : third;
+      return `${year}-${month}-${day}`;
+    }
+  };
+
+  const normalizeAmount = (amountStr: string): number => {
+    // Handle various amount formats
+    let cleanAmount = amountStr.replace(/[^\d+\-.,]/g, '');
+    
+    // Handle European format (1.234,56) vs US format (1,234.56)
+    const lastComma = cleanAmount.lastIndexOf(',');
+    const lastDot = cleanAmount.lastIndexOf('.');
+    
+    if (lastComma > lastDot) {
+      // European format: 1.234,56
+      cleanAmount = cleanAmount.replace(/\./g, '').replace(',', '.');
+    } else if (lastDot > lastComma) {
+      // US format: 1,234.56
+      cleanAmount = cleanAmount.replace(/,/g, '');
+    }
+    
+    return parseFloat(cleanAmount) || 0;
+  };
+
+  const extractBalance = (line: string): number | null => {
+    // Try to find balance (usually the last amount in the line)
+    const amountPattern = /([+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g;
+    const amounts = line.match(amountPattern) || [];
+    
+    if (amounts.length > 1) {
+      // Last amount is likely the balance
+      return normalizeAmount(amounts[amounts.length - 1]);
+    }
+    
+    return null;
+  };
+
+  const determineTransactionType = (amount: number | string, description: string): 'income' | 'expense' => {
+    const numAmount = typeof amount === 'string' ? normalizeAmount(amount) : amount;
+    const desc = description.toLowerCase();
+    
+    // Check for income keywords
+    const incomeKeywords = [
+      'salario', 'salary', 'ordenado', 'vencimento', 'transferencia',
+      'deposito', 'juros', 'dividendo', 'bonus', 'subsidio', 'pensao',
+      'reembolso', 'devolucao', 'credito', 'receita'
+    ];
+    
+    const hasIncomeKeyword = incomeKeywords.some(keyword => desc.includes(keyword));
+    
+    // Large positive amounts are often income
+    const isLargeAmount = numAmount > 500;
+    
+    // If amount is explicitly positive or has income keywords
+    if (hasIncomeKeyword || (isLargeAmount && !desc.includes('compra') && !desc.includes('pagamento'))) {
+      return 'income';
+    }
+    
+    return 'expense';
+  };
   const parseExcelFile = async (file: File): Promise<ImportedTransaction[]> => {
-    // Simulate Excel parsing with realistic data
+    // In a real implementation, this would use a library like xlsx to parse Excel files
+    // For now, simulate intelligent parsing of Excel data
     return new Promise((resolve) => {
       setTimeout(() => {
+        // Simulate realistic bank statement data from Excel
         resolve([
           {
             id: '1',
-            originalData: '15/01/2024;-45,80;CONTINENTE LISBOA AMOREIRAS',
+            originalData: 'Row 2: 15/01/2024 | CONTINENTE LISBOA AMOREIRAS | -45,80 | 2.454,95',
             parsed: {
               date: '2024-01-15',
               amount: 45.80,
               description: 'CONTINENTE LISBOA AMOREIRAS',
-              type: 'expense'
+              type: 'expense',
+              balance: 2454.95
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -171,12 +522,13 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: '2',
-            originalData: '01/01/2024;2800,00;TRANSFERENCIA SALARIO EMPRESA XYZ',
+            originalData: 'Row 3: 01/01/2024 | TRANSFERENCIA SALARIO EMPRESA XYZ | +2.800,00 | 2.500,75',
             parsed: {
               date: '2024-01-01',
               amount: 2800.00,
               description: 'TRANSFERENCIA SALARIO EMPRESA XYZ',
-              type: 'income'
+              type: 'income',
+              balance: 2500.75
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -185,12 +537,13 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: '3',
-            originalData: '12/01/2024;-65,40;GALP ENERGIA LISBOA',
+            originalData: 'Row 4: 12/01/2024 | GALP ENERGIA LISBOA | -65,40 | 2.389,35',
             parsed: {
               date: '2024-01-12',
               amount: 65.40,
               description: 'GALP ENERGIA LISBOA',
-              type: 'expense'
+              type: 'expense',
+              balance: 2389.35
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -199,12 +552,13 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: '4',
-            originalData: '10/01/2024;-15,99;NETFLIX.COM',
+            originalData: 'Row 5: 10/01/2024 | NETFLIX.COM | -15,99 | 2.373,36',
             parsed: {
               date: '2024-01-10',
               amount: 15.99,
               description: 'NETFLIX.COM',
-              type: 'expense'
+              type: 'expense',
+              balance: 2373.36
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -213,12 +567,43 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: '5',
-            originalData: '08/01/2024;-750,00;RENDA CASA JANEIRO',
+            originalData: 'Row 6: 08/01/2024 | RENDA CASA JANEIRO | -750,00 | 1.623,36',
             parsed: {
               date: '2024-01-08',
               amount: 750.00,
               description: 'RENDA CASA JANEIRO',
-              type: 'expense'
+              type: 'expense',
+              balance: 1623.36
+            },
+            aiSuggestions: { confidence: 0 },
+            userOverrides: {},
+            status: 'pending',
+            isDuplicate: false
+          },
+          {
+            id: '6',
+            originalData: 'Row 7: 05/01/2024 | PINGO DOCE CASCAIS | -32,15 | 1.591,21',
+            parsed: {
+              date: '2024-01-05',
+              amount: 32.15,
+              description: 'PINGO DOCE CASCAIS',
+              type: 'expense',
+              balance: 1591.21
+            },
+            aiSuggestions: { confidence: 0 },
+            userOverrides: {},
+            status: 'pending',
+            isDuplicate: false
+          },
+          {
+            id: '7',
+            originalData: 'Row 8: 03/01/2024 | MULTIBANCO LEVANTAMENTO | -50,00 | 1.541,21',
+            parsed: {
+              date: '2024-01-03',
+              amount: 50.00,
+              description: 'MULTIBANCO LEVANTAMENTO',
+              type: 'expense',
+              balance: 1541.21
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -226,7 +611,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
             isDuplicate: false
           }
         ]);
-      }, 2000);
+      }, 1500);
     });
   };
 
@@ -236,31 +621,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
       reader.onload = (e) => {
         try {
           const text = e.target?.result as string;
-          const lines = text.split('\n').filter(line => line.trim());
-          const transactions: ImportedTransaction[] = [];
-          
-          // Skip header row
-          for (let i = 1; i < lines.length; i++) {
-            const columns = lines[i].split(',');
-            if (columns.length >= 3) {
-              transactions.push({
-                id: `csv_${i}`,
-                originalData: lines[i],
-                parsed: {
-                  date: parseDate(columns[0]),
-                  amount: Math.abs(parseFloat(columns[1])),
-                  description: columns[2].replace(/"/g, ''),
-                  type: parseFloat(columns[1]) > 0 ? 'income' : 'expense'
-                },
-                aiSuggestions: { confidence: 0 },
-                userOverrides: {},
-                status: 'pending',
-                isDuplicate: false
-              });
-            }
-          }
-          
-          resolve(transactions);
+          const parsedTransactions = parseAnyTextFormat(text);
+          resolve(parsedTransactions);
         } catch (error) {
           reject(error);
         }
@@ -270,18 +632,19 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   };
 
   const parsePDFFile = async (file: File): Promise<ImportedTransaction[]> => {
-    // Simulate PDF OCR processing with realistic bank statement data
+    // Simulate PDF OCR processing with realistic Portuguese bank statement data
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve([
           {
             id: 'pdf_1',
-            originalData: '15/01/2024 CONTINENTE LISBOA -45,80',
+            originalData: 'PDF Line: 15/01/2024    CONTINENTE LISBOA AMOREIRAS    -45,80    2.454,95',
             parsed: {
               date: '2024-01-15',
               amount: 45.80,
-              description: 'CONTINENTE LISBOA',
-              type: 'expense'
+              description: 'CONTINENTE LISBOA AMOREIRAS',
+              type: 'expense',
+              balance: 2454.95
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -290,12 +653,13 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: 'pdf_2',
-            originalData: '12/01/2024 GALP ENERGIA LISBOA -65,40',
+            originalData: 'PDF Line: 12/01/2024    GALP ENERGIA LISBOA    -65,40    2.389,35',
             parsed: {
               date: '2024-01-12',
               amount: 65.40,
               description: 'GALP ENERGIA LISBOA',
-              type: 'expense'
+              type: 'expense',
+              balance: 2389.35
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -304,12 +668,43 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           },
           {
             id: 'pdf_3',
-            originalData: '01/01/2024 SALARIO MENSAL +2800,00',
+            originalData: 'PDF Line: 01/01/2024    TRANSFERENCIA SALARIO EMPRESA XYZ    +2.800,00    2.500,75',
             parsed: {
               date: '2024-01-01',
               amount: 2800.00,
-              description: 'SALARIO MENSAL',
-              type: 'income'
+              description: 'TRANSFERENCIA SALARIO EMPRESA XYZ',
+              type: 'income',
+              balance: 2500.75
+            },
+            aiSuggestions: { confidence: 0 },
+            userOverrides: {},
+            status: 'pending',
+            isDuplicate: false
+          },
+          {
+            id: 'pdf_4',
+            originalData: 'PDF Line: 10/01/2024    NETFLIX.COM DUBLIN    -15,99    2.357,37',
+            parsed: {
+              date: '2024-01-10',
+              amount: 15.99,
+              description: 'NETFLIX.COM DUBLIN',
+              type: 'expense',
+              balance: 2357.37
+            },
+            aiSuggestions: { confidence: 0 },
+            userOverrides: {},
+            status: 'pending',
+            isDuplicate: false
+          },
+          {
+            id: 'pdf_5',
+            originalData: 'PDF Line: 08/01/2024    RENDA CASA JANEIRO 2024    -750,00    1.607,37',
+            parsed: {
+              date: '2024-01-08',
+              amount: 750.00,
+              description: 'RENDA CASA JANEIRO 2024',
+              type: 'expense',
+              balance: 1607.37
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -317,86 +712,14 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
             isDuplicate: false
           }
         ]);
-      }, 3000);
+      }, 2500);
     });
   };
 
   const parsePastedText = async (text: string): Promise<ImportedTransaction[]> => {
-    const lines = text.split('\n').filter(line => line.trim());
-    const transactions: ImportedTransaction[] = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Try to parse different formats
-      const patterns = [
-        // DD/MM/YYYY Amount Description
-        /(\d{2}\/\d{2}\/\d{4})\s+(-?\d+[.,]\d{2})\s+(.+)/,
-        // DD-MM-YYYY Amount Description  
-        /(\d{2}-\d{2}-\d{4})\s+(-?\d+[.,]\d{2})\s+(.+)/,
-        // Description Amount DD/MM/YYYY
-        /(.+?)\s+(-?\d+[.,]\d{2})\s+(\d{2}\/\d{2}\/\d{4})/,
-        // DD/MM/YYYY Description Amount (common bank format)
-        /(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?\d+[.,]\d{2})$/,
-        // Amount Description DD/MM/YYYY
-        /(-?\d+[.,]\d{2})\s+(.+?)\s+(\d{2}\/\d{2}\/\d{4})$/
-      ];
-      
-      for (const pattern of patterns) {
-        const match = line.match(pattern);
-        if (match) {
-          let dateStr, amountStr, description;
-          
-          // Handle different pattern matches
-          if (pattern.source.includes('(.+?)\\s+(-?\\d+[.,]\\d{2})\\s+(\\d{2}')) {
-            // Description Amount Date
-            [, description, amountStr, dateStr] = match;
-          } else if (pattern.source.includes('(-?\\d+[.,]\\d{2})\\s+(.+?)\\s+(\\d{2}')) {
-            // Amount Description Date
-            [, amountStr, description, dateStr] = match;
-          } else if (pattern.source.includes('(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(.+?)\\s+(-?\\d+')) {
-            // Date Description Amount
-            [, dateStr, description, amountStr] = match;
-          } else {
-            // Date Amount Description (default)
-            [, dateStr, amountStr, description] = match;
-          }
-          
-          const amount = Math.abs(parseFloat(amountStr.replace(',', '.')));
-          const isNegative = amountStr.includes('-');
-          const isIncome = !isNegative && (amount > 1000 || description.toLowerCase().includes('salario') || description.toLowerCase().includes('transferencia'));
-          
-          transactions.push({
-            id: `paste_${i}`,
-            originalData: line,
-            parsed: {
-              date: parseDate(dateStr),
-              amount,
-              description: description.trim(),
-              type: isIncome ? 'income' : 'expense'
-            },
-            aiSuggestions: { confidence: 0 },
-            userOverrides: {},
-            status: 'pending',
-            isDuplicate: false
-          });
-          break;
-        }
-      }
-    }
-    
-    return transactions;
+    return parseAnyTextFormat(text);
   };
 
-  const parseDate = (dateStr: string): string => {
-    // Convert DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD
-    const parts = dateStr.split(/[\/\-]/);
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-    return new Date().toISOString().split('T')[0];
-  };
 
   const checkForDuplicate = (parsed: any): boolean => {
     return transactions.some(t => 
@@ -629,20 +952,24 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                     rows={10}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
                     placeholder="Exemplo:
-15/01/2024 -45.80 CONTINENTE LISBOA
-14/01/2024 2800.00 TRANSFERENCIA SALARIO
-13/01/2024 -65.40 GALP ENERGIA LISBOA
-10/01/2024 -15.99 NETFLIX.COM
-08/01/2024 -750.00 RENDA CASA JANEIRO"
+15/01/2024    CONTINENTE LISBOA AMOREIRAS    -45,80    2.454,95
+12/01/2024    GALP ENERGIA LISBOA    -65,40    2.389,35
+10/01/2024    NETFLIX.COM DUBLIN    -15,99    2.373,36
+08/01/2024    RENDA CASA JANEIRO    -750,00    1.623,36
+01/01/2024    TRANSFERENCIA SALARIO    +2.800,00    2.500,75
+
+Ou qualquer formato de extrato bancário:
+Data;Descrição;Valor;Saldo
+15/01/2024;Compra CONTINENTE;-45,80;2.454,95"
                   />
                   <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
                     <p className="text-sm text-yellow-800">
-                      <strong>Formatos suportados:</strong><br/>
-                      • DD/MM/AAAA Valor Descrição<br/>
-                      • DD/MM/AAAA Descrição Valor<br/>
-                      • Descrição Valor DD/MM/AAAA<br/>
-                      • Valor Descrição DD/MM/AAAA<br/>
-                      • Separados por espaços, tabs ou ponto-e-vírgula
+                      <strong>🤖 Detecção Automática de Formatos:</strong><br/>
+                      • Qualquer ordem: Data, Descrição, Valor, Saldo<br/>
+                      • Separadores: espaços, tabs, vírgulas, ponto-e-vírgula<br/>
+                      • Formatos de data: DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA<br/>
+                      • Valores: +/-1.234,56 ou 1234.56 ou 1234,56<br/>
+                      • <strong>A IA identifica automaticamente a estrutura!</strong>
                     </p>
                   </div>
                 </div>
@@ -663,10 +990,10 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                   {processing ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processando com IA...
+                      🤖 Analisando e Categorizando...
                     </>
                   ) : (
-                    'Processar e Categorizar'
+                    '🧠 Processar com IA'
                   )}
                 </button>
               </div>
@@ -771,9 +1098,17 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                               <span className={`font-medium ml-1 ${
                                 transaction.parsed.type === 'income' ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                €{transaction.parsed.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {transaction.parsed.type === 'income' ? '+' : '-'}€{transaction.parsed.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
+                            {transaction.parsed.balance && (
+                              <div>
+                                <span className="text-gray-600">Saldo:</span>
+                                <span className="font-medium ml-1 text-blue-600">
+                                  €{transaction.parsed.balance.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
                             <div>
                               <span className="text-gray-600">Categoria:</span>
                               <span className="font-medium ml-1">
@@ -933,7 +1268,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center">
                       <p className="text-xl font-bold text-green-600">
-                        €{importedTransactions
+                        +€{importedTransactions
                           .filter(t => t.status === 'approved' && t.parsed.type === 'income')
                           .reduce((sum, t) => sum + t.parsed.amount, 0)
                           .toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -942,13 +1277,23 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-bold text-red-600">
-                        €{importedTransactions
+                        -€{importedTransactions
                           .filter(t => t.status === 'approved' && t.parsed.type === 'expense')
                           .reduce((sum, t) => sum + t.parsed.amount, 0)
                           .toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-sm text-red-700">Despesas</p>
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 text-center">
+                    <p className="text-lg font-bold text-blue-600">
+                      Resultado: €{(
+                        importedTransactions.filter(t => t.status === 'approved' && t.parsed.type === 'income').reduce((sum, t) => sum + t.parsed.amount, 0) -
+                        importedTransactions.filter(t => t.status === 'approved' && t.parsed.type === 'expense').reduce((sum, t) => sum + t.parsed.amount, 0)
+                      ).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-sm text-blue-700">Impacto no Saldo</p>
                   </div>
                 </div>
               </div>
