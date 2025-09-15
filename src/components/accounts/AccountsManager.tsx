@@ -217,11 +217,19 @@ export const AccountsManager = () => {
                       </div>
                       <div className="flex items-center space-x-4 mt-1">
                         <span className="text-xs text-gray-500">
-                          Criada: {new Date(account.createdAt).toLocaleDateString('pt-PT')}
+                          Criada: {new Date(account.createdAt).toLocaleDateString('pt-PT', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
                         </span>
                         <span className="text-xs text-gray-500">
                           Saldo inicial: €{account.initialBalance.toFixed(2)} 
-                          ({new Date(account.initialBalanceDate).toLocaleDateString('pt-PT')})
+                          ({new Date(account.initialBalanceDate).toLocaleDateString('pt-PT', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })})
                         </span>
                         {account.uploadConfig && (
                           <span className="text-xs text-gray-500 flex items-center">

@@ -368,12 +368,16 @@ export const TransactionManager = () => {
                               <> → {toAccount.name}</>
                             )}
                           </span>
-                          <span>{new Date(transaction.date).toLocaleDateString('pt-PT')}</span>
+                          <span>{new Date(transaction.date).toLocaleDateString('pt-PT', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}</span>
                           {transaction.location && (
                             <span>📍 {transaction.location}</span>
                           )}
                           {transaction.aiProcessed && (
-                            <span className="text-blue-600 text-xs">🤖 AI</span>
+                            <span className="text-blue-600 text-xs">🤖 IA</span>
                           )}
                         </div>
                         {transaction.tags && transaction.tags.length > 0 && (

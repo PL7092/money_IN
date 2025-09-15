@@ -8,7 +8,7 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, onClose }) => {
-  const { addTransaction, updateTransaction, categories, accounts, entities, processTransactionWithAI } = useFinance();
+  const { addTransaction, updateTransaction, categories, accounts, entities, processTransactionWithAI, addAIRule } = useFinance();
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',
@@ -25,6 +25,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
   });
   const [aiSuggestions, setAiSuggestions] = useState<Partial<Transaction> | null>(null);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingRule, setPendingRule] = useState<any>(null);
 
   useEffect(() => {
     if (transaction) {
@@ -47,6 +49,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar subcategoria obrigatória para não-transferências
+    if (formData.type !== 'transfer' && !formData.subcategory) {
+      alert('Por favor, seleccione uma subcategoria.');
+      return;
+    }
     
     const transactionData = {
       type: formData.type,
@@ -84,20 +92,59 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     const description = e.target.value;
     setFormData(prev => ({ ...prev, description }));
     
-    // Process with AI if description is long enough
-    if (description.length > 3 && formData.amount) {
+    // Processar com AI se a descrição for suficientemente longa
+    if (description.length > 3 && formData.amount && formData.type !== 'transfer') {
       try {
         const suggestions = await processTransactionWithAI(description, parseFloat(formData.amount));
-        if (suggestions.aiProcessed) {
+        if (suggestions.aiProcessed && suggestions.confidence && suggestions.confidence > 0.7) {
           setAiSuggestions(suggestions);
           setShowAiSuggestions(true);
+        } else if (suggestions.confidence && suggestions.confidence > 0.4) {
+          // Sugestão com confiança média - pedir confirmação para aprender
+          setPendingRule({
+            description,
+            amount: parseFloat(formData.amount),
+            suggestions
+          });
+          setShowConfirmDialog(true);
         }
       } catch (error) {
-        console.error('AI processing error:', error);
+        console.error('Erro no processamento AI:', error);
       }
     }
   };
 
+  const handleConfirmLearning = (confirmed: boolean) => {
+    if (confirmed && pendingRule) {
+      // Aplicar sugestões
+      setFormData(prev => ({
+        ...prev,
+        entity: pendingRule.suggestions.entity || prev.entity,
+        category: pendingRule.suggestions.category || prev.category,
+        subcategory: pendingRule.suggestions.subcategory || prev.subcategory,
+        tags: pendingRule.suggestions.tags ? pendingRule.suggestions.tags.join(', ') : prev.tags
+      }));
+      
+      // Criar nova regra AI para aprender
+      const newRule = {
+        name: `Regra automática - ${pendingRule.suggestions.entity || pendingRule.description}`,
+        pattern: pendingRule.description.split(' ')[0], // Primeira palavra como padrão
+        patternType: 'contains' as const,
+        entity: pendingRule.suggestions.entity,
+        category: pendingRule.suggestions.category,
+        subcategory: pendingRule.suggestions.subcategory,
+        tags: pendingRule.suggestions.tags || [],
+        confidence: 0.8,
+        priority: 5,
+        active: true
+      };
+      
+      addAIRule(newRule);
+    }
+    
+    setShowConfirmDialog(false);
+    setPendingRule(null);
+  };
   const applyAiSuggestions = () => {
     if (aiSuggestions) {
       setFormData(prev => ({
@@ -247,7 +294,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-blue-900 flex items-center">
-                  🤖 Sugestões da AI (Confiança: {((aiSuggestions.confidence || 0) * 100).toFixed(0)}%)
+                  🤖 Sugestões da IA (Confiança: {((aiSuggestions.confidence || 0) * 100).toFixed(0)}%)
                 </h4>
                 <button
                   type="button"
@@ -274,13 +321,53 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               <button
                 type="button"
                 onClick={applyAiSuggestions}
-                className="mt-3 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                className="mt-3 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colours"
               >
                 Aplicar Sugestões
               </button>
             </div>
           )}
 
+          {/* Confirmation Dialog */}
+          {showConfirmDialog && pendingRule && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center mb-3">
+                <h4 className="text-sm font-medium text-yellow-900 flex items-center">
+                  🤔 A IA encontrou algo semelhante
+                </h4>
+              </div>
+              <div className="space-y-2 text-sm mb-3">
+                {pendingRule.suggestions.entity && (
+                  <p><strong>Entidade:</strong> {pendingRule.suggestions.entity}</p>
+                )}
+                {pendingRule.suggestions.category && (
+                  <p><strong>Categoria:</strong> {pendingRule.suggestions.category}</p>
+                )}
+                {pendingRule.suggestions.subcategory && (
+                  <p><strong>Subcategoria:</strong> {pendingRule.suggestions.subcategory}</p>
+                )}
+              </div>
+              <p className="text-sm text-yellow-700 mb-3">
+                Deseja aplicar estas sugestões e ensinar a IA a reconhecer transações semelhantes no futuro?
+              </p>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleConfirmLearning(true)}
+                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colours"
+                >
+                  Sim, aplicar e aprender
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmLearning(false)}
+                  className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colours"
+                >
+                  Não, obrigado
+                </button>
+              </div>
+            </div>
+          )}
           {/* Entity */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -399,17 +486,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
           {formData.type !== 'transfer' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subcategoria
+                Subcategoria *
               </label>
               <select
                 name="subcategory"
                 value={formData.subcategory}
                 onChange={handleChange}
+                required
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
                   formData.type === 'income' ? 'focus:ring-green-500' : 'focus:ring-red-500'
                 }`}
               >
-                <option value="">Seleccionar subcategoria (opcional)</option>
+                <option value="">Seleccionar subcategoria</option>
                 {formData.category && categories
                   .find(cat => cat.name === formData.category)
                   ?.subcategories.map(subcategory => (
@@ -482,7 +570,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
           {formData.type === 'transfer' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-700">
-                <strong>Nota:</strong> As transferências movem dinheiro entre as suas contas e não afetam 
+                <strong>Nota:</strong> As transferências movem dinheiro entre as suas contas e não afectam 
                 os orçamentos ou cálculos de receitas/despesas. O valor será subtraído da conta de origem 
                 e adicionado à conta de destino.
               </p>

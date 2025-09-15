@@ -48,7 +48,11 @@ export const RecentTransactions = () => {
               {transaction.type === 'income' ? '+' : '-'}€{transaction.amount.toFixed(2)}
             </p>
             <p className="text-sm text-gray-500">
-              {new Date(transaction.date).toLocaleDateString('pt-PT')}
+              {new Date(transaction.date).toLocaleDateString('pt-PT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })}
             </p>
           </div>
         </div>

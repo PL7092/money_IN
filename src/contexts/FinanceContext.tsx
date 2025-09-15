@@ -945,10 +945,100 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   };
 
   const processTransactionWithAI = async (description: string, amount: number): Promise<Partial<Transaction>> => {
-    // Simulate AI processing
+    // Simular processamento de IA
     const activeRules = aiRules.filter(rule => rule.active);
     
-    for (const rule of activeRules.sort((a, b) => b.priority - a.priority)) {
+    // Primeiro, verificar regras exactas
+    for (const rule of activeRules.sort((a, b) => a.priority - b.priority)) {
+      let matches = false;
+      
+      switch (rule.patternType) {
+        case 'contains':
+          matches = description.toUpperCase().includes(rule.pattern.toUpperCase());
+          break;
+        case 'startsWith':
+          matches = description.toUpperCase().startsWith(rule.pattern.toUpperCase());
+          break;
+        case 'endsWith':
+          matches = description.toUpperCase().endsWith(rule.pattern.toUpperCase());
+          break;
+        case 'regex':
+          try {
+            const regex = new RegExp(rule.pattern, 'i');
+            matches = regex.test(description);
+          } catch (e) {
+            matches = false;
+          }
+          break;
+      }
+      
+      if (matches) {
+        return {
+          entity: rule.entity,
+          category: rule.category,
+          subcategory: rule.subcategory,
+          tags: rule.tags,
+          aiProcessed: true,
+          confidence: rule.confidence
+        };
+      }
+    }
+    
+    // Segundo, procurar padrões similares com base em transações existentes
+    const similarTransactions = transactions.filter(t => {
+      const similarity = calculateSimilarity(description, t.description);
+      return similarity > 0.6 && t.type !== 'transfer';
+    });
+    
+    if (similarTransactions.length > 0) {
+      // Encontrar a transação mais similar
+      const mostSimilar = similarTransactions.reduce((prev, current) => {
+        const prevSim = calculateSimilarity(description, prev.description);
+        const currSim = calculateSimilarity(description, current.description);
+        return currSim > prevSim ? current : prev;
+      });
+      
+      const similarity = calculateSimilarity(description, mostSimilar.description);
+      
+      return {
+        entity: mostSimilar.entity,
+        category: mostSimilar.category,
+        subcategory: mostSimilar.subcategory,
+        tags: mostSimilar.tags,
+        aiProcessed: true,
+        confidence: similarity * 0.8 // Reduzir confiança para sugestões baseadas em similaridade
+      };
+    }
+    
+    return { aiProcessed: false };
+  };
+  
+  // Função auxiliar para calcular similaridade entre strings
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const words1 = str1.toLowerCase().split(' ');
+    const words2 = str2.toLowerCase().split(' ');
+    
+    let commonWords = 0;
+    const totalWords = Math.max(words1.length, words2.length);
+    
+    words1.forEach(word => {
+      if (words2.includes(word) && word.length > 2) {
+        commonWords++;
+      }
+    });
+    
+    return commonWords / totalWords;
+  };
+  
+  // Função para formatar datas no formato português
+  const formatDatePT = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-PT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
       let matches = false;
       
       switch (rule.patternType) {
