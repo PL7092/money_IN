@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, CreditCard, Wallet, PiggyBank, TrendingUp, Edit, Trash2 } from 'lucide-react';
+import { Plus, CreditCard, Wallet, PiggyBank, TrendingUp, Edit, Trash2, Upload } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { AccountForm } from './AccountForm';
 
@@ -223,6 +223,21 @@ export const AccountsManager = () => {
                           Saldo inicial: €{account.initialBalance.toFixed(2)} 
                           ({new Date(account.initialBalanceDate).toLocaleDateString('pt-PT')})
                         </span>
+                        {account.uploadConfig && (
+                          <span className="text-xs text-gray-500 flex items-center">
+                            <Upload size={12} className="mr-1" />
+                            Upload: {account.uploadConfig.preferredFormat.toUpperCase()}
+                            {account.uploadConfig.autoCategorizationRules.length > 0 && 
+                              ` (${account.uploadConfig.autoCategorizationRules.length} regras)`
+                            }
+                          </span>
+                        )}
+                        {account.uploadConfig && (
+                          <span className="flex items-center">
+                            <Upload size={12} className="mr-1" />
+                            {account.uploadConfig.preferredFormat.toUpperCase()}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

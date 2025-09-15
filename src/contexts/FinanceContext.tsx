@@ -34,6 +34,48 @@ export interface Account {
     date: string;
     reason?: string;
   }>;
+  uploadConfig?: {
+    preferredFormat: 'pdf' | 'excel' | 'csv';
+    pdfConfig?: {
+      datePattern: string;
+      amountPattern: string;
+      descriptionPattern: string;
+      dateFormat: string;
+      amountColumn: string;
+      descriptionColumn: string;
+      skipLines: number;
+      encoding: string;
+    };
+    excelConfig?: {
+      sheetName: string;
+      headerRow: number;
+      dateColumn: string;
+      amountColumn: string;
+      descriptionColumn: string;
+      categoryColumn?: string;
+      dateFormat: string;
+      skipRows: number;
+    };
+    csvConfig?: {
+      delimiter: string;
+      headerRow: number;
+      dateColumn: number;
+      amountColumn: number;
+      descriptionColumn: number;
+      categoryColumn?: number;
+      dateFormat: string;
+      encoding: string;
+    };
+    autoCategorizationRules?: Array<{
+      id: string;
+      pattern: string;
+      category: string;
+      subcategory?: string;
+      type: 'income' | 'expense';
+      priority: number;
+      active: boolean;
+    }>;
+  };
 }
 
 export interface Budget {
