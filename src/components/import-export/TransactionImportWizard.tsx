@@ -828,9 +828,9 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
                 {stepNumber < 4 && (
                   <div className={`w-16 h-1 mx-2 ${
                     step > stepNumber ? 'bg-purple-600' : 'bg-gray-200'
-                  }`} />
+              transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
                 )}
-              </div>
+              {transaction.amount >= 0 ? '+' : ''}€{Math.abs(transaction.amount).toFixed(2)}
             ))}
           </div>
 
