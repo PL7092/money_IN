@@ -369,7 +369,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
       if (isAmount(part)) {
         if (!amount) {
           amount = normalizeAmount(part);
-        } else {
+        } else if (!isAmountString(part)) {
           // Second amount might be balance
           balance = normalizeAmount(part);
         }
@@ -403,6 +403,16 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   };
 
   const isAmount = (str: string): boolean => {
+    const amountPatterns = [
+      /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
+      /^[+-]?\d+[.,]\d{2}$/,
+      /^[+-]?\d+$/
+    ];
+    
+    return amountPatterns.some(pattern => pattern.test(str));
+  };
+
+  const isAmountString = (str: string): boolean => {
     const amountPatterns = [
       /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
       /^[+-]?\d+[.,]\d{2}$/,
@@ -498,7 +508,6 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
     
     return 'expense';
   };
-
   const parseExcelFile = async (file: File): Promise<ImportedTransaction[]> => {
     // In a real implementation, this would use a library like xlsx to parse Excel files
     // For now, simulate intelligent parsing of Excel data
@@ -513,7 +522,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-15',
               amount: 45.80,
               description: 'CONTINENTE LISBOA AMOREIRAS',
-              type: 'expense'
+              type: 'expense',
+              balance: 2454.95
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -527,7 +537,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-01',
               amount: 2800.00,
               description: 'TRANSFERENCIA SALARIO EMPRESA XYZ',
-              type: 'income'
+              type: 'income',
+              balance: 2500.75
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -541,7 +552,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-12',
               amount: 65.40,
               description: 'GALP ENERGIA LISBOA',
-              type: 'expense'
+              type: 'expense',
+              balance: 2389.35
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -555,7 +567,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-10',
               amount: 15.99,
               description: 'NETFLIX.COM',
-              type: 'expense'
+              type: 'expense',
+              balance: 2373.36
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -569,7 +582,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-08',
               amount: 750.00,
               description: 'RENDA CASA JANEIRO',
-              type: 'expense'
+              type: 'expense',
+              balance: 1623.36
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -583,7 +597,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-05',
               amount: 32.15,
               description: 'PINGO DOCE CASCAIS',
-              type: 'expense'
+              type: 'expense',
+              balance: 1591.21
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -597,7 +612,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-03',
               amount: 50.00,
               description: 'MULTIBANCO LEVANTAMENTO',
-              type: 'expense'
+              type: 'expense',
+              balance: 1541.21
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -637,7 +653,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-15',
               amount: 45.80,
               description: 'CONTINENTE LISBOA AMOREIRAS',
-              type: 'expense'
+              type: 'expense',
+              balance: 2454.95
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -651,7 +668,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-12',
               amount: 65.40,
               description: 'GALP ENERGIA LISBOA',
-              type: 'expense'
+              type: 'expense',
+              balance: 2389.35
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -665,7 +683,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-01',
               amount: 2800.00,
               description: 'TRANSFERENCIA SALARIO EMPRESA XYZ',
-              type: 'income'
+              type: 'income',
+              balance: 2500.75
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -679,7 +698,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-10',
               amount: 15.99,
               description: 'NETFLIX.COM DUBLIN',
-              type: 'expense'
+              type: 'expense',
+              balance: 2357.37
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -693,7 +713,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               date: '2024-01-08',
               amount: 750.00,
               description: 'RENDA CASA JANEIRO 2024',
-              type: 'expense'
+              type: 'expense',
+              balance: 1607.37
             },
             aiSuggestions: { confidence: 0 },
             userOverrides: {},
@@ -708,6 +729,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   const parsePastedText = async (text: string): Promise<ImportedTransaction[]> => {
     return parseAnyTextFormat(text);
   };
+
 
   const checkForDuplicate = (parsed: any): boolean => {
     return transactions.some(t => 
@@ -1089,6 +1111,14 @@ Data;Descrição;Valor;Saldo
                                 {transaction.parsed.type === 'income' ? '+' : '-'}€{transaction.parsed.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
+                            {transaction.parsed.balance && (
+                              <div>
+                                <span className="text-gray-600">Saldo:</span>
+                                <span className="font-medium ml-1 text-blue-600">
+                                  €{transaction.parsed.balance.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
                             <div>
                               <span className="text-gray-600">Categoria:</span>
                               <span className="font-medium ml-1">
@@ -1170,7 +1200,7 @@ Data;Descrição;Valor;Saldo
                                   transaction.status === 'approved' ? 'pending' : 'approved')}
                                 className={`px-3 py-1 text-sm rounded transition-colors ${
                                   transaction.status === 'approved'
-                                    ? 'bg-green-600 text-white'
+                                    ? 'bg-green-600 text-white hover:bg-green-700'
                                     : 'border border-green-600 text-green-600 hover:bg-green-50'
                                 }`}
                               >
@@ -1286,7 +1316,7 @@ Data;Descrição;Valor;Saldo
                 <p className="text-sm text-purple-700">
                   As categorizações aprovadas serão usadas para melhorar a precisão da IA em futuras importações.
                   {importedTransactions.filter(t => t.status === 'approved' && t.userOverrides.category).length > 0 && (
-                    \` ${importedTransactions.filter(t => t.status === 'approved' && t.userOverrides.category).length} novas regras serão criadas.`
+                    ` ${importedTransactions.filter(t => t.status === 'approved' && t.userOverrides.category).length} novas regras serão criadas.`
                   )}
                 </p>
               </div>
