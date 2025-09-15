@@ -35,7 +35,7 @@ interface TransactionImportWizardProps {
 }
 
 export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = ({ onClose }) => {
-  const { accounts, categories, entities, aiRules, addTransaction, transactions, processTransactionWithAI } = useFinance();
+  const { accounts, categories, entities, aiRules, addTransaction, transactions, processTransactionWithAI, assets, savingsGoals, recurringTransactions } = useFinance();
   const [step, setStep] = useState(1);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [importMethod, setImportMethod] = useState<'file' | 'paste'>('file');
@@ -713,32 +713,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   const checkForDuplicate = (parsed: any): boolean => {
     return transactions.some(t => 
       t.date === parsed.date && 
-        i === index ? { 
-          ...transaction, 
-          [field]: value,
-          // Limpar campos irrelevantes quando muda tipo
-          ...(field === 'type' && value === 'transfer' ? {
-            assetId: '',
-            savingsGoalId: '',
-            recurringTransactionId: '',
-            category: 'Transferência',
-            subcategory: ''
-          } : {}),
-          ...(field === 'type' && value !== 'transfer' ? {
-            toAccount: ''
-          } : {})
-        } : transaction
       t.description.toLowerCase().includes(parsed.description.toLowerCase().substring(0, 10))
     );
-    
-    // Se mudou categoria, limpar subcategoria
-    if (field === 'category') {
-      setImportedTransactions(prev => 
-        prev.map((transaction, i) => 
-          i === index ? { ...transaction, subcategory: '' } : transaction
-        )
-      );
-    }
   };
 
   const generateReasoning = (aiResult: any): string => {
@@ -1197,27 +1173,6 @@ Data;Descrição;Valor;Saldo
                                     ? 'bg-green-600 text-white hover:bg-green-700'
                                     : 'border border-green-600 text-green-600 hover:bg-green-50'
                                 }`}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Subcategoria *
-                            </label>
-                            <select
-                              value={transaction.subcategory || ''}
-                              onChange={(e) => updateTransaction(index, 'subcategory', e.target.value)}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                              disabled={!transaction.category}
-                            >
-                              <option value="">Seleccionar subcategoria</option>
-                              {categories
-                                .find(cat => cat.name === transaction.category)
-                                ?.subcategories.map(subcategory => (
-                                  <option key={subcategory} value={subcategory}>{subcategory}</option>
-                                ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               >
                                 {transaction.status === 'approved' ? 'Aprovada' : 'Aprovar'}
                               </button>
@@ -1233,168 +1188,7 @@ Data;Descrição;Valor;Saldo
                           >
                             {transaction.status === 'rejected' ? 'Rejeitada' : 'Rejeitar'}
                           </button>
-
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Tags
-                            </label>
-                            <input
-                              type="text"
-                              value={transaction.tags ? transaction.tags.join(', ') : ''}
-                              onChange={(e) => updateTransaction(index, 'tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                              placeholder="Ex: essencial, mensal"
-                            />
-                          </div>
                         </div>
-
-                        {/* Tipo de Transação */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Tipo de Transação
-                          </label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(['income', 'expense', 'transfer'] as const).map((type) => (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => {
-                                  updateTransaction(index, 'type', type);
-                                  if (type === 'transfer') {
-                                    updateTransaction(index, 'category', 'Transferência');
-                                    updateTransaction(index, 'subcategory', '');
-                                  }
-                                }}
-                                className={`px-2 py-1 text-xs rounded border transition-colors ${
-                                  transaction.type === type
-                                    ? type === 'income' ? 'border-green-500 bg-green-50 text-green-700' :
-                                      type === 'expense' ? 'border-red-500 bg-red-50 text-red-700' :
-                                      'border-blue-500 bg-blue-50 text-blue-700'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                {type === 'income' ? 'Receita' : type === 'expense' ? 'Despesa' : 'Transferência'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Transferência - Conta Destino */}
-                        {transaction.type === 'transfer' && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Conta Destino *
-                            </label>
-                            <select
-                              value={transaction.toAccount || ''}
-                              onChange={(e) => updateTransaction(index, 'toAccount', e.target.value)}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                            >
-                              <option value="">Seleccionar conta destino</option>
-                              {accounts
-                                .filter(a => a.status === 'active' && a.id !== transaction.account)
-                                .map(account => (
-                                  <option key={account.id} value={account.id}>{account.name}</option>
-                                ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {/* Associações - apenas para receitas e despesas */}
-                        {transaction.type !== 'transfer' && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Ativo
-                              </label>
-                              <select
-                                value={transaction.assetId || ''}
-                                onChange={(e) => updateTransaction(index, 'assetId', e.target.value)}
-                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="">Nenhum ativo</option>
-                                {assets.filter(a => a.active).map(asset => (
-                                  <option key={asset.id} value={asset.id}>
-                                    {asset.type === 'vehicle' ? '🚗' : asset.type === 'property' ? '🏠' : asset.type === 'equipment' ? '💻' : '📦'} {asset.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Poupança
-                              </label>
-                              <select
-                                value={transaction.savingsGoalId || ''}
-                                onChange={(e) => updateTransaction(index, 'savingsGoalId', e.target.value)}
-                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="">Nenhum objetivo</option>
-                                {savingsGoals.filter(g => g.status === 'active').map(goal => (
-                                  <option key={goal.id} value={goal.id}>
-                                    🎯 {goal.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Recorrente
-                              </label>
-                              <select
-                                value={transaction.recurringTransactionId || ''}
-                                onChange={(e) => updateTransaction(index, 'recurringTransactionId', e.target.value)}
-                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="">Não recorrente</option>
-                                {recurringTransactions.filter(r => r.active && r.type === transaction.type).map(recurring => (
-                                  <option key={recurring.id} value={recurring.id}>
-                                    🔄 {recurring.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Localização
-                          </label>
-                          <input
-                            type="text"
-                            value={transaction.location || ''}
-                            onChange={(e) => updateTransaction(index, 'location', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                            placeholder="Ex: Lisboa, Porto"
-                          />
-                        </div>
-                        {transaction.assetId && (
-                          <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                            {assets.find(a => a.id === transaction.assetId)?.name || 'Ativo'}
-                          </span>
-                        )}
-                        {transaction.savingsGoalId && (
-                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                            🎯 {savingsGoals.find(g => g.id === transaction.savingsGoalId)?.name || 'Poupança'}
-                          </span>
-                        )}
-                        {transaction.recurringTransactionId && (
-                          <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
-                            🔄 Recorrente
-                          </span>
-                        )}
-                        {transaction.tags && transaction.tags.length > 0 && (
-                          <div className="flex space-x-1">
-                            {transaction.tags.map(tag => (
-                              <span key={tag} className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -1459,9 +1253,7 @@ Data;Descrição;Valor;Saldo
                           .reduce((sum, t) => sum + t.parsed.amount, 0)
                           .toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
-                      {transaction.subcategory && <span>• {transaction.subcategory}</span>}
                       <p className="text-sm text-green-700">Receitas</p>
-                      {transaction.location && <span>• 📍 {transaction.location}</span>}
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-bold text-red-600">
