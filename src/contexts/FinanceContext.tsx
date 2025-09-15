@@ -1218,7 +1218,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   };
 
   const processTransactionWithAI = async (description: string, amount: number): Promise<Partial<Transaction>> => {
-    // Simulate AI processing with enhanced logic
+    // Enhanced AI processing with better logic
     const activeRules = aiRules.filter(rule => rule.active);
     
     // First, check exact rules
@@ -1283,22 +1283,87 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       };
     }
     
-    // Third, try to infer from amount patterns
-    if (amount > 2000) {
-      // Likely salary or large income
+    // Third, try to infer from description and amount patterns
+    const descLower = description.toLowerCase();
+    
+    // Income patterns
+    if (descLower.includes('salario') || descLower.includes('salary') || 
+        descLower.includes('ordenado') || descLower.includes('vencimento') ||
+        (amount > 1500 && (descLower.includes('transferencia') || descLower.includes('transfer')))) {
       return {
+        entity: 'Empregador',
         category: 'Salário',
         subcategory: 'Salário Base',
+        tags: ['salario', 'mensal'],
         aiProcessed: true,
-        confidence: 0.6
+        confidence: 0.75
       };
     }
     
-    if (amount < 10) {
-      // Likely small expense
+    // Expense patterns
+    if (descLower.includes('continente') || descLower.includes('pingo doce') || 
+        descLower.includes('lidl') || descLower.includes('auchan')) {
+      return {
+        entity: 'Supermercado',
+        category: 'Alimentação',
+        subcategory: 'Supermercado',
+        tags: ['supermercado', 'alimentacao'],
+        aiProcessed: true,
+        confidence: 0.8
+      };
+    }
+    
+    if (descLower.includes('galp') || descLower.includes('bp') || 
+        descLower.includes('repsol') || descLower.includes('combustivel')) {
+      return {
+        entity: 'Posto de Combustível',
+        category: 'Transporte',
+        subcategory: 'Combustível',
+        tags: ['combustivel', 'transporte'],
+        aiProcessed: true,
+        confidence: 0.85
+      };
+    }
+    
+    if (descLower.includes('netflix') || descLower.includes('spotify') || 
+        descLower.includes('amazon prime') || descLower.includes('disney')) {
+      return {
+        entity: 'Serviço de Streaming',
+        category: 'Entretenimento',
+        subcategory: 'Streaming',
+        tags: ['streaming', 'mensal'],
+        aiProcessed: true,
+        confidence: 0.9
+      };
+    }
+    
+    if (descLower.includes('renda') || descLower.includes('rent') || 
+        descLower.includes('condominio') || descLower.includes('prestacao casa')) {
+      return {
+        category: 'Habitação',
+        subcategory: 'Renda',
+        tags: ['habitacao', 'mensal'],
+        aiProcessed: true,
+        confidence: 0.8
+      };
+    }
+    
+    // Amount-based inference
+    if (amount < 5) {
       return {
         category: 'Outros',
         subcategory: 'Pequenas Despesas',
+        tags: ['pequeno'],
+        aiProcessed: true,
+        confidence: 0.5
+      };
+    }
+    
+    if (amount > 500 && amount < 1000) {
+      return {
+        category: 'Outros',
+        subcategory: 'Despesa Significativa',
+        tags: ['significativo'],
         aiProcessed: true,
         confidence: 0.4
       };
