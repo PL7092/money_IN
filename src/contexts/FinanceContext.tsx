@@ -111,13 +111,38 @@ export interface RecurringTransaction {
   id: string;
   name: string;
   amount: number;
+  expectedAmount: number;
+  maxAcceptableAmount?: number;
+  minAcceptableAmount?: number;
   type: 'income' | 'expense';
   category: string;
+  subcategory?: string;
   account: string;
   frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   nextDate: string;
   endDate?: string;
   active: boolean;
+  autoIncludeInBudget: boolean;
+  alertOnVariation: boolean;
+  variationThreshold: number; // percentage
+  history: Array<{
+    id: string;
+    transactionId: string;
+    amount: number;
+    date: string;
+    variance: number; // difference from expected
+    variancePercentage: number;
+  }>;
+  statistics: {
+    averageAmount: number;
+    lastSixMonthsAverage: number;
+    totalVariance: number;
+    timesOverExpected: number;
+    timesUnderExpected: number;
+    lastRecommendationDate?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Asset {
@@ -1243,6 +1268,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       addAIRule,
       updateAIRule,
       deleteAIRule,
+      convertTransactionToRecurring,
+      linkTransactionToRecurring,
+      getRecurringRecommendations,
+      updateRecurringBudgetIntegration,
       processTransactionWithAI,
       getTotalBalance,
       getMonthlyIncome,

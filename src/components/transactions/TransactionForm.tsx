@@ -585,6 +585,29 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             >
               Cancelar
             </button>
+            {!transaction && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Convert to recurring transaction
+                  const recurringData = {
+                    name: formData.description,
+                    frequency: 'monthly' as const,
+                    nextDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    autoIncludeInBudget: formData.type === 'expense',
+                    alertOnVariation: true,
+                    variationThreshold: 20
+                  };
+                  
+                  // In a real implementation, this would open a recurring form with pre-filled data
+                  console.log('Convert to recurring:', recurringData);
+                  alert('Funcionalidade de conversão para recorrente será implementada');
+                }}
+                className="px-4 py-2 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
+              >
+                Tornar Recorrente
+              </button>
+            )}
             <button
               type="submit"
               className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
