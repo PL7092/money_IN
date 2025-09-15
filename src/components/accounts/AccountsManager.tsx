@@ -42,14 +42,6 @@ export const AccountsManager = () => {
     }
   };
 
-  const handleArchiveToggle = (account: any) => {
-    const newStatus = account.status === 'active' ? 'archived' : 'active';
-    const action = newStatus === 'archived' ? 'arquivar' : 'reativar';
-    
-    if (confirm(`Tem a certeza que deseja ${action} esta conta?`)) {
-      updateAccount(account.id, { status: newStatus });
-    }
-  };
   const handleFormClose = () => {
     setShowForm(false);
     setEditingAccount(null);
@@ -266,25 +258,6 @@ export const AccountsManager = () => {
                     </div>
 
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleArchiveToggle(account)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isArchived 
-                            ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' 
-                            : 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
-                        }`}
-                        title={isArchived ? 'Reativar conta' : 'Arquivar conta'}
-                      >
-                        {isArchived ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4" />
-                          </svg>
-                        )}
-                      </button>
                       <button
                         onClick={() => handleEdit(account)}
                         className={`p-2 rounded-lg transition-colors ${

@@ -31,6 +31,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
     currency: 'EUR',
     institution: '',
     color: colorOptions[0],
+    status: 'active' as 'active' | 'archived'
     uploadConfig: {
       preferredFormat: 'pdf' as 'pdf' | 'excel' | 'csv',
       pdfConfig: {
@@ -78,6 +79,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
         currency: account.currency,
         institution: account.institution,
         color: account.color,
+        status: account.status
         uploadConfig: account.uploadConfig || {
           preferredFormat: 'pdf',
           pdfConfig: {
@@ -127,7 +129,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
       initialBalanceDate: formData.initialBalanceDate,
       currency: formData.currency,
       institution: formData.institution,
-      color: formData.color
+      color: formData.color,
+      status: formData.status
     };
 
     if (account) {
@@ -400,6 +403,42 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
               ))}
             </div>
           </div>
+
+          {/* Status Management - Only for existing accounts */}
+          {account && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado da Conta
+              </label>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="active"
+                    checked={formData.status === 'active'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'archived' }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Ativa</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="archived"
+                    checked={formData.status === 'archived'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'archived' }))}
+                    className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Arquivada</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Contas arquivadas não aparecem nas listas principais mas mantêm o histórico
+              </p>
+            </div>
+          )}
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-700">
