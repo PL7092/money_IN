@@ -80,6 +80,7 @@ export const TransactionManager = () => {
       type: '',
       category: '',
       account: '',
+      entity: '',
       dateFrom: '',
       dateTo: '',
       amountMin: '',
@@ -412,9 +413,8 @@ export const TransactionManager = () => {
                                 <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                                   {tag}
                                 </span>
-                        {transaction.type !== 'transfer' && fromAccount?.type === 'investment' && (
-                            {linkedAsset.type === 'vehicle' ? '🚗' : linkedAsset.type === 'property' ? '🏠' : linkedAsset.type === 'equipment' ? '💻' : '📦'} 
-                            {linkedAsset.name}
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
