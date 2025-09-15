@@ -275,7 +275,11 @@ export const SavingsManager = () => {
                         <p className="text-sm text-gray-600 mb-2">{goal.description}</p>
                       )}
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span>Meta: {new Date(goal.targetDate).toLocaleDateString('pt-PT')}</span>
+                        <span>Meta: {new Date(goal.targetDate).toLocaleDateString('pt-PT', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}</span>
                         {goal.status === 'active' && (
                           <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
                             {isOverdue ? `${Math.abs(daysLeft)} dias em atraso` : `${daysLeft} dias restantes`}
@@ -368,7 +372,11 @@ export const SavingsManager = () => {
                         <div>€{milestone.amount.toFixed(0)}</div>
                         {milestone.achievedAt && (
                           <div className="text-xs mt-1">
-                            ✓ {new Date(milestone.achievedAt).toLocaleDateString('pt-PT')}
+                            ✓ {new Date(milestone.achievedAt).toLocaleDateString('pt-PT', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}
                           </div>
                         )}
                       </div>
