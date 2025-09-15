@@ -8,7 +8,7 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, onClose }) => {
-  const { addTransaction, updateTransaction, categories, accounts, entities, processTransactionWithAI, addAIRule } = useFinance();
+  const { addTransaction, updateTransaction, categories, accounts, entities, assets, savingsGoals, processTransactionWithAI, addAIRule } = useFinance();
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',
@@ -18,6 +18,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     subcategory: '',
     account: '',
     toAccount: '',
+    assetId: '',
+    savingsGoalId: '',
     date: new Date().toISOString().split('T')[0],
     tags: '',
     location: '',
@@ -39,6 +41,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         subcategory: transaction.subcategory || '',
         account: transaction.account,
         toAccount: transaction.toAccount || '',
+        assetId: transaction.assetId || '',
+        savingsGoalId: transaction.savingsGoalId || '',
         date: transaction.date,
         tags: transaction.tags ? transaction.tags.join(', ') : '',
         location: transaction.location || '',
@@ -65,6 +69,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
       subcategory: formData.subcategory || undefined,
       account: formData.account,
       toAccount: formData.type === 'transfer' ? formData.toAccount : undefined,
+      assetId: formData.assetId || undefined,
+      savingsGoalId: formData.savingsGoalId || undefined,
       date: formData.date,
       tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
       location: formData.location || undefined,
@@ -435,6 +441,55 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                 </select>
               </div>
             )}
+          </div>
+
+          {/* Asset and Savings Goal Association */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ativo Associado
+              </label>
+              <select
+                name="assetId"
+                value={formData.assetId}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
+                  formData.type === 'income' ? 'focus:ring-green-500' :
+                  formData.type === 'expense' ? 'focus:ring-red-500' :
+                  'focus:ring-blue-500'
+                }`}
+              >
+                <option value="">Nenhum ativo (opcional)</option>
+                {assets.filter(a => a.active).map(asset => (
+                  <option key={asset.id} value={asset.id}>
+                    {asset.name} ({asset.type === 'vehicle' ? '🚗' : asset.type === 'property' ? '🏠' : asset.type === 'equipment' ? '💻' : '📦'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Objetivo de Poupança
+              </label>
+              <select
+                name="savingsGoalId"
+                value={formData.savingsGoalId}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
+                  formData.type === 'income' ? 'focus:ring-green-500' :
+                  formData.type === 'expense' ? 'focus:ring-red-500' :
+                  'focus:ring-blue-500'
+                }`}
+              >
+                <option value="">Nenhum objetivo (opcional)</option>
+                {savingsGoals.filter(g => g.status === 'active').map(goal => (
+                  <option key={goal.id} value={goal.id}>
+                    🎯 {goal.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Category and Date */}

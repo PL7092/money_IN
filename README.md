@@ -42,7 +42,13 @@ nano .env
 ### 2. Construir e Executar
 
 ```bash
+# Dar permissões aos scripts
+chmod +x scripts/*.sh
+
 # Construir e iniciar todos os serviços
+./scripts/docker-setup.sh
+
+# OU manualmente:
 docker-compose up -d
 
 # Verificar estado dos serviços
@@ -63,6 +69,39 @@ docker-compose logs -f financeflow
 ```
 Email: demo@financeflow.local
 Password: demo123
+```
+
+## 🗄️ Suporte para MariaDB
+
+A aplicação suporta tanto PostgreSQL como MariaDB:
+
+### Usar MariaDB em vez de PostgreSQL:
+
+```bash
+# Iniciar com MariaDB
+docker-compose --profile mariadb up -d
+
+# Parar PostgreSQL se estiver a correr
+docker-compose stop postgres
+```
+
+### Configuração MariaDB:
+- **Porta**: 3306
+- **Base de Dados**: financeflow
+- **Utilizador**: financeflow_user
+- **Password**: financeflow_password
+
+### Migração entre Bases de Dados:
+
+```bash
+# Backup PostgreSQL
+./scripts/backup.sh
+
+# Mudar para MariaDB
+docker-compose --profile mariadb up -d
+docker-compose stop postgres
+
+# Configurar na aplicação: Configurações > Base de Dados
 ```
 
 ## 🛠️ Gestão do Docker

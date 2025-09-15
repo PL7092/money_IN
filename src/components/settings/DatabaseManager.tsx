@@ -3,6 +3,23 @@ import { Database, Server, Shield, Download, Upload, RefreshCw, AlertCircle, Che
 
 export const DatabaseManager = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [dbType, setDbType] = useState<'postgresql' | 'mariadb'>('postgresql');
+  const [dbConfig, setDbConfig] = useState({
+    postgresql: {
+      host: 'postgres',
+      port: 5432,
+      database: 'financeflow',
+      username: 'financeflow_user',
+      password: 'financeflow_password'
+    },
+    mariadb: {
+      host: 'mariadb',
+      port: 3306,
+      database: 'financeflow',
+      username: 'financeflow_user',
+      password: 'financeflow_password'
+    }
+  });
   const [dbStats, setDbStats] = useState({
     totalTransactions: 0,
     totalAccounts: 0,
@@ -55,6 +72,24 @@ export const DatabaseManager = () => {
     await checkConnection();
   };
 
+  const switchDatabase = async (newDbType: 'postgresql' | 'mariadb') => {
+    if (confirm(`Tem a certeza que deseja mudar para ${newDbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}? Esta ação requer reiniciar os serviços.`)) {
+      setDbType(newDbType);
+      // In a real implementation, this would update docker-compose configuration
+      console.log(`Switching to ${newDbType}`);
+    }
+  };
+
+  const updateDbConfig = (type: 'postgresql' | 'mariadb', field: string, value: string | number) => {
+    setDbConfig(prev => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [field]: value
+      }
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -75,13 +110,23 @@ export const DatabaseManager = () => {
             <Server className="mr-2" size={20} />
             Estado da Conexão
           </h3>
-          <button
-            onClick={testConnection}
-            className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-          >
-            <RefreshCw size={16} className="mr-1" />
-            Testar Conexão
-          </button>
+          <div className="flex items-center space-x-3">
+            <select
+              value={dbType}
+              onChange={(e) => switchDatabase(e.target.value as 'postgresql' | 'mariadb')}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="postgresql">PostgreSQL</option>
+              <option value="mariadb">MariaDB</option>
+            </select>
+            <button
+              onClick={testConnection}
+              className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              <RefreshCw size={16} className="mr-1" />
+              Testar Conexão
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -92,7 +137,9 @@ export const DatabaseManager = () => {
               'bg-yellow-500 animate-pulse'
             }`} />
             <div>
-              <p className="text-sm font-medium text-gray-900">PostgreSQL</p>
+              <p className="text-sm font-medium text-gray-900">
+                {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
+              </p>
               <p className="text-xs text-gray-600">
                 {connectionStatus === 'connected' ? 'Conectado' :
                  connectionStatus === 'disconnected' ? 'Desconectado' :
@@ -234,7 +281,9 @@ export const DatabaseManager = () => {
 
       {/* Database Configuration */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuração da Base de Dados</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Configuração da Base de Dados - {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
+        </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -244,9 +293,9 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value="postgres"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                value={dbConfig[dbType].host}
+                onChange={(e) => updateDbConfig(dbType, 'host', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
@@ -255,10 +304,10 @@ export const DatabaseManager = () => {
                 Porta
               </label>
               <input
-                type="text"
-                value="5432"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                type="number"
+                value={dbConfig[dbType].port}
+                onChange={(e) => updateDbConfig(dbType, 'port', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
@@ -268,9 +317,9 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value="financeflow"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                value={dbConfig[dbType].database}
+                onChange={(e) => updateDbConfig(dbType, 'database', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -282,9 +331,21 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value="financeflow_user"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                value={dbConfig[dbType].username}
+                onChange={(e) => updateDbConfig(dbType, 'username', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={dbConfig[dbType].password}
+                onChange={(e) => updateDbConfig(dbType, 'password', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
@@ -294,22 +355,35 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value="postgresql://financeflow_user:***@postgres:5432/financeflow"
+                value={dbType === 'postgresql' 
+                  ? `postgresql://${dbConfig.postgresql.username}:***@${dbConfig.postgresql.host}:${dbConfig.postgresql.port}/${dbConfig.postgresql.database}`
+                  : `mysql://${dbConfig.mariadb.username}:***@${dbConfig.mariadb.host}:${dbConfig.mariadb.port}/${dbConfig.mariadb.database}`
+                }
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
               />
             </div>
+          </div>
+        </div>
 
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Redis Cache
-              </label>
-              <input
-                type="text"
-                value="redis://:***@redis:6379"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-              />
+              <h4 className="font-medium text-gray-900">Configurações Ativas</h4>
+              <p className="text-sm text-gray-600">
+                Base de dados atual: {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={testConnection}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Testar Conexão
+              </button>
+              <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                Guardar Configuração
+              </button>
             </div>
           </div>
         </div>
@@ -323,7 +397,9 @@ export const DatabaseManager = () => {
           <div className="border border-gray-200 rounded-lg p-4">
             <h4 className="font-medium text-gray-900 mb-2">Comandos Básicos</h4>
             <div className="space-y-2 text-sm">
-              <code className="block bg-gray-100 p-2 rounded text-xs">docker-compose up -d</code>
+              <code className="block bg-gray-100 p-2 rounded text-xs">
+                docker-compose --profile {dbType === 'postgresql' ? 'postgres' : 'mariadb'} up -d
+              </code>
               <p className="text-gray-600">Iniciar todos os serviços</p>
               
               <code className="block bg-gray-100 p-2 rounded text-xs">docker-compose down</code>
@@ -331,6 +407,11 @@ export const DatabaseManager = () => {
               
               <code className="block bg-gray-100 p-2 rounded text-xs">docker-compose logs -f</code>
               <p className="text-gray-600">Ver logs em tempo real</p>
+              
+              <code className="block bg-gray-100 p-2 rounded text-xs">
+                docker-compose exec {dbType === 'postgresql' ? 'postgres' : 'mariadb'} {dbType === 'postgresql' ? 'psql -U financeflow_user -d financeflow' : 'mysql -u financeflow_user -p financeflow'}
+              </code>
+              <p className="text-gray-600">Aceder à base de dados</p>
             </div>
           </div>
 

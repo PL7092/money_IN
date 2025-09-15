@@ -22,6 +22,33 @@ services:
       timeout: 5s
       retries: 5
 
+  # MariaDB Database (alternative to PostgreSQL)
+  mariadb:
+    image: mariadb:11
+    container_name: financeflow_mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: financeflow_root_password
+      MYSQL_DATABASE: financeflow
+      MYSQL_USER: financeflow_user
+      MYSQL_PASSWORD: financeflow_password
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./database/mariadb-init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - financeflow_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - mariadb
+
   # Redis for caching and sessions
   redis:
     image: redis:7-alpine
@@ -100,6 +127,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  mariadb_data:
     driver: local
 
 networks:

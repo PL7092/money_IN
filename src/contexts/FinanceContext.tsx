@@ -10,9 +10,11 @@ export interface Transaction {
   subcategory?: string;
   account: string;
   toAccount?: string; // For transfers
+  assetId?: string; // For asset-related transactions
+  savingsGoalId?: string; // For savings-related transactions
+  recurringTransactionId?: string; // For recurring transactions
   date: string;
   recurring?: boolean;
-  recurringId?: string;
   tags?: string[];
   location?: string;
   receipt?: string;
@@ -149,20 +151,37 @@ export interface Asset {
   id: string;
   name: string;
   type: 'vehicle' | 'property' | 'equipment';
+  category?: string;
   value: number;
   purchaseDate: string;
+  purchasePrice?: number;
+  depreciationRate?: number;
+  currentCondition?: 'excellent' | 'good' | 'fair' | 'poor';
+  location?: string;
+  serialNumber?: string;
+  model?: string;
+  brand?: string;
+  yearManufactured?: number;
+  color?: string;
+  notes?: string;
+  active?: boolean;
   documents: string[];
   insurance?: {
     company: string;
     policy: string;
     expiryDate: string;
+    premium?: string;
+    coverage?: string;
   };
   maintenance?: Array<{
     date: string;
     description: string;
     cost: number;
     nextDue?: string;
+    type?: string;
   }>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SavingsGoal {
@@ -554,6 +573,79 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     ];
 
     setSavingsGoals(mockSavingsGoals);
+
+    // Mock assets
+    const mockAssets: Asset[] = [
+      {
+        id: '1',
+        name: 'BMW Serie 3',
+        type: 'vehicle',
+        category: 'Automóvel',
+        value: 25000,
+        purchaseDate: '2021-03-15',
+        purchasePrice: 35000,
+        depreciationRate: 15,
+        currentCondition: 'good',
+        location: 'Garagem Principal',
+        model: 'Serie 3 320d',
+        brand: 'BMW',
+        yearManufactured: 2021,
+        color: '#3B82F6',
+        active: true,
+        insurance: {
+          company: 'Allianz',
+          policy: 'AUTO-2021-1234',
+          expiryDate: '2024-03-15',
+          premium: '450',
+          coverage: 'Completa'
+        },
+        maintenance: [
+          {
+            date: '2024-01-10',
+            description: 'Inspeção Anual',
+            cost: 120,
+            nextDue: '2025-01-10',
+            type: 'inspection'
+          },
+          {
+            date: '2023-12-05',
+            description: 'Mudança de óleo',
+            cost: 85,
+            nextDue: '2024-06-05',
+            type: 'maintenance'
+          }
+        ],
+        documents: ['registo_veiculo.pdf', 'seguro_2024.pdf'],
+        createdAt: '2021-03-15T10:00:00Z',
+        updatedAt: '2024-01-15T14:30:00Z'
+      },
+      {
+        id: '2',
+        name: 'MacBook Pro 16"',
+        type: 'equipment',
+        category: 'Informática',
+        value: 2800,
+        purchaseDate: '2023-06-20',
+        purchasePrice: 3200,
+        currentCondition: 'excellent',
+        location: 'Escritório',
+        model: 'MacBook Pro 16" M2',
+        brand: 'Apple',
+        yearManufactured: 2023,
+        color: '#6B7280',
+        active: true,
+        insurance: {
+          company: 'Apple',
+          expiryDate: '2026-06-20',
+          coverage: 'AppleCare+'
+        },
+        documents: ['garantia_apple.pdf', 'fatura_compra.pdf'],
+        createdAt: '2023-06-20T10:00:00Z',
+        updatedAt: '2023-06-20T10:00:00Z'
+      }
+    ];
+
+    setAssets(mockAssets);
 
     // Mock entities
     const mockEntities: Entity[] = [
@@ -950,19 +1042,25 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addAsset = (asset: Omit<Asset, 'id'>) => {
     const newAsset: Asset = {
       ...asset,
-      id: Date.now().toString()
+      id: Date.now().toString(),
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     setAssets(prev => [...prev, newAsset]);
   };
 
   const updateAsset = (id: string, updatedAsset: Partial<Asset>) => {
     setAssets(prev => prev.map(asset =>
-      asset.id === id ? { ...asset, ...updatedAsset } : asset
+      asset.id === id ? { ...asset, ...updatedAsset, updatedAt: new Date().toISOString() } : asset
     ));
   };
 
   const deleteAsset = (id: string) => {
-    setAssets(prev => prev.filter(asset => asset.id !== id));
+    // Soft delete - mark as inactive
+    setAssets(prev => prev.map(asset =>
+      asset.id === id ? { ...asset, active: false, updatedAt: new Date().toISOString() } : asset
+    ));
   };
 
   const addSavingsGoal = (goal: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt' | 'milestones' | 'transactions'>) => {

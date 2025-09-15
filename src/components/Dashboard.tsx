@@ -36,7 +36,7 @@ export const Dashboard = () => {
   const stats = [
     {
       title: 'Saldo Total',
-      value: `€${totalBalance.toFixed(2)}`,
+      value: `€${totalBalance.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change: '+2.5%',
       changeType: 'positive' as const,
       icon: Wallet,
@@ -44,7 +44,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Receitas (Mês)',
-      value: `€${monthlyIncome.toFixed(2)}`,
+      value: `€${monthlyIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change: '+5.2%',
       changeType: 'positive' as const,
       icon: TrendingUp,
@@ -52,7 +52,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Despesas (Mês)',
-      value: `€${monthlyExpenses.toFixed(2)}`,
+      value: `€${monthlyExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change: '-3.1%',
       changeType: 'positive' as const,
       icon: TrendingDown,
@@ -60,7 +60,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Resultado Líquido',
-      value: `€${netIncome.toFixed(2)}`,
+      value: `€${netIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change: netIncome > 0 ? '+12.3%' : '-8.7%',
       changeType: netIncome > 0 ? 'positive' as const : 'negative' as const,
       icon: Target,

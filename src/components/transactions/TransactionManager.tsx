@@ -4,7 +4,7 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { TransactionForm } from './TransactionForm';
 
 export const TransactionManager = () => {
-  const { transactions, deleteTransaction, categories, accounts, entities } = useFinance();
+  const { transactions, deleteTransaction, categories, accounts, entities, assets, savingsGoals, recurringTransactions } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [filters, setFilters] = useState({
@@ -340,6 +340,9 @@ export const TransactionManager = () => {
             {filteredTransactions.map((transaction) => {
               const fromAccount = accounts.find(a => a.id === transaction.account);
               const toAccount = transaction.toAccount ? accounts.find(a => a.id === transaction.toAccount) : null;
+              const linkedAsset = transaction.assetId ? assets.find(a => a.id === transaction.assetId) : null;
+              const linkedSavingsGoal = transaction.savingsGoalId ? savingsGoals.find(g => g.id === transaction.savingsGoalId) : null;
+              const linkedRecurring = transaction.recurringTransactionId ? recurringTransactions.find(r => r.id === transaction.recurringTransactionId) : null;
               const Icon = getTransactionIcon(transaction.type);
               const colorClass = getTransactionColor(transaction.type);
               const bgColorClass = getTransactionBgColor(transaction.type);
@@ -357,6 +360,27 @@ export const TransactionManager = () => {
                           <span className={`px-2 py-1 text-xs rounded-full ${bgColorClass} ${colorClass} font-medium`}>
                             {getTransactionLabel(transaction.type)}
                           </span>
+                          {/* Association Indicators */}
+                          {linkedAsset && (
+                            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full flex items-center">
+                              {linkedAsset.type === 'vehicle' ? '🚗' : linkedAsset.type === 'property' ? '🏠' : linkedAsset.type === 'equipment' ? '💻' : '📦'} {linkedAsset.name}
+                            </span>
+                          )}
+                          {linkedSavingsGoal && (
+                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center">
+                              🎯 {linkedSavingsGoal.name}
+                            </span>
+                          )}
+                          {linkedRecurring && (
+                            <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full flex items-center">
+                              🔄 Recorrente
+                            </span>
+                          )}
+                          {transaction.type !== 'transfer' && accounts.find(a => a.type === 'investment' && a.id === transaction.account) && (
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center">
+                              📈 Investimento
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           {transaction.entity && <span>👤 {transaction.entity}</span>}
@@ -397,7 +421,7 @@ export const TransactionManager = () => {
                     
                     <div className="flex items-center space-x-3">
                       <span className={`text-lg font-bold ${colorClass}`}>
-                        {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}€{transaction.amount.toFixed(2)}
+                        {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}€{transaction.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <div className="flex space-x-1">
                         <button
