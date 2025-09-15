@@ -271,3 +271,5 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
+  )
+}
