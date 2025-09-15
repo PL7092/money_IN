@@ -31,7 +31,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
     currency: 'EUR',
     institution: '',
     color: colorOptions[0],
-    status: 'active' as 'active' | 'archived'
+    status: 'active' as 'active' | 'archived',
     uploadConfig: {
       preferredFormat: 'pdf' as 'pdf' | 'excel' | 'csv',
       pdfConfig: {
@@ -79,7 +79,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
         currency: account.currency,
         institution: account.institution,
         color: account.color,
-        status: account.status
+        status: account.status,
         uploadConfig: account.uploadConfig || {
           preferredFormat: 'pdf',
           pdfConfig: {
