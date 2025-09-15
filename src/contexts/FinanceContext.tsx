@@ -807,6 +807,57 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     setAccounts(prev => prev.filter(account => account.id !== id));
   };
 
+  const updateInvestmentValue = (accountId: string, newValue: number, currentPrice?: number) => {
+    const now = new Date().toISOString();
+    setAccounts(prev => prev.map(account => {
+      if (account.id === accountId) {
+        const updatedAccount = {
+          ...account,
+          balance: newValue,
+          updatedAt: now
+        };
+        
+        // Update investment details if currentPrice is provided
+        if (currentPrice !== undefined && account.investmentDetails) {
+          updatedAccount.investmentDetails = {
+            ...account.investmentDetails,
+            currentPrice,
+            lastPriceUpdate: now
+          };
+        }
+        
+        return updatedAccount;
+      }
+      return account;
+    }));
+  };
+
+  const getInvestmentAccounts = () => {
+    return accounts.filter(account => account.type === 'investment');
+  };
+
+  const getInvestmentPerformance = () => {
+    const investmentAccounts = getInvestmentAccounts();
+    
+    const totalInvested = investmentAccounts.reduce((sum, account) => {
+      return sum + (account.investmentDetails?.averageCost || account.initialBalance);
+    }, 0);
+    
+    const currentValue = investmentAccounts.reduce((sum, account) => {
+      return sum + account.balance;
+    }, 0);
+    
+    const totalReturn = currentValue - totalInvested;
+    const returnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+    
+    return {
+      totalInvested,
+      currentValue,
+      totalReturn,
+      returnPercentage
+    };
+  };
+
   const addBudget = (budget: Omit<Budget, 'id' | 'spent' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date();
     const newBudget: Budget = {
