@@ -1197,6 +1197,12 @@ Data;Descrição;Valor;Saldo
                             className={`px-3 py-1 text-sm rounded transition-colors ${
                               transaction.status === 'rejected'
                                 ? 'bg-red-600 text-white'
+                                : 'border border-red-600 text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            {transaction.status === 'rejected' ? 'Rejeitada' : 'Rejeitar'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
