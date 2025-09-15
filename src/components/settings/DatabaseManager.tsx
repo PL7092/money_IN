@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Server, Shield, Download, Upload, RefreshCw, AlertCircle, CheckCircle, Settings } from 'lucide-react';
+import { MariaDBSetup } from './MariaDBSetup';
 
 export const DatabaseManager = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
@@ -28,6 +29,7 @@ export const DatabaseManager = () => {
     lastBackup: null as string | null
   });
   const [backupStatus, setBackupStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle');
+  const [showMariaDBSetup, setShowMariaDBSetup] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -90,6 +92,12 @@ export const DatabaseManager = () => {
     }));
   };
 
+  const handleMariaDBSetupSuccess = () => {
+    setDbType('mariadb');
+    checkConnection();
+    loadStats();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,6 +127,14 @@ export const DatabaseManager = () => {
               <option value="postgresql">PostgreSQL</option>
               <option value="mariadb">MariaDB</option>
             </select>
+            {dbType === 'mariadb' && (
+              <button
+                onClick={() => setShowMariaDBSetup(true)}
+                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+              >
+                Configurar MariaDB
+              </button>
+            )}
             <button
               onClick={testConnection}
               className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
@@ -542,6 +558,14 @@ export const DatabaseManager = () => {
           </div>
         </div>
       </div>
+
+      {/* MariaDB Setup Modal */}
+      {showMariaDBSetup && (
+        <MariaDBSetup
+          onClose={() => setShowMariaDBSetup(false)}
+          onSuccess={handleMariaDBSetupSuccess}
+        />
+      )}
     </div>
   );
 };

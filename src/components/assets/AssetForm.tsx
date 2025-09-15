@@ -358,7 +358,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
                     min="0"
                     required
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -377,7 +377,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
                     step="0.01"
                     min="0"
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -394,7 +394,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onClose }) => {
                   step="0.1"
                   min="0"
                   max="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
                   placeholder="0"
                 />
               </div>

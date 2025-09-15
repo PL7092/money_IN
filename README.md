@@ -91,17 +91,40 @@ docker-compose stop postgres
 - **Utilizador**: financeflow_user
 - **Password**: financeflow_password
 
-### Migração entre Bases de Dados:
+### Configuração Automática:
+
+1. **Via Interface Web:**
+   - Aceder a Configurações > Base de Dados
+   - Selecionar "MariaDB" no dropdown
+   - Clicar em "Configurar MariaDB"
+   - Seguir o assistente passo-a-passo
+
+2. **Via Docker Compose:**
 
 ```bash
-# Backup PostgreSQL
-./scripts/backup.sh
-
-# Mudar para MariaDB
+# Iniciar MariaDB
 docker-compose --profile mariadb up -d
-docker-compose stop postgres
 
-# Configurar na aplicação: Configurações > Base de Dados
+# Parar PostgreSQL (opcional)
+docker-compose stop postgres
+```
+
+3. **Servidor MariaDB Externo:**
+   - Use o assistente de configuração na aplicação
+   - Forneça os dados de conexão
+   - A aplicação criará automaticamente as tabelas necessárias
+
+### Comandos Úteis MariaDB:
+
+```bash
+# Conectar ao MariaDB (Docker)
+docker exec -it financeflow-mariadb mysql -u root -p
+
+# Backup MariaDB
+docker exec financeflow-mariadb mysqldump -u financeflow_user -p financeflow > backup.sql
+
+# Restaurar MariaDB
+docker exec -i financeflow-mariadb mysql -u financeflow_user -p financeflow < backup.sql
 ```
 
 ## 🛠️ Gestão do Docker
