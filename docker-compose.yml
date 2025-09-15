@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: financeflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: financeflow
+      POSTGRES_USER: financeflow_user
+      POSTGRES_PASSWORD: financeflow_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - financeflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U financeflow_user -d financeflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: financeflow_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass financeflow_redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - financeflow_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # FinanceFlow Application
+  financeflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeflow_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://financeflow_user:financeflow_password@postgres:5432/financeflow
+      - REDIS_URL=redis://:financeflow_redis_password@redis:6379
+      - APP_SECRET=your_super_secret_key_change_this_in_production
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - financeflow_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backup service
+  backup:
+    image: postgres:15-alpine
+    container_name: financeflow_backup
+    restart: "no"
+    environment:
+      POSTGRES_DB: financeflow
+      POSTGRES_USER: financeflow_user
+      POSTGRES_PASSWORD: financeflow_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - financeflow_network
+    command: |
+      sh -c '
+        while ! pg_isready -h postgres -U financeflow_user; do
+          echo "Waiting for database..."
+          sleep 2
+        done
+        echo "Creating backup..."
+        pg_dump -h postgres -U financeflow_user -d financeflow > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+        echo "Backup completed!"
+      '
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  financeflow_network:
+    driver: bridge

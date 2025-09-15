@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, User, Bell, Shield, Palette, Globe, Brain, Key, Eye, EyeOff } from 'lucide-react';
+import { DatabaseManager } from './DatabaseManager';
 
 export const SettingsManager = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -67,6 +68,7 @@ export const SettingsManager = () => {
     { id: 'preferences', label: 'Preferências', icon: Palette },
     { id: 'security', label: 'Segurança', icon: Shield },
     { id: 'ai-apis', label: 'APIs de AI', icon: Brain },
+    { id: 'database', label: 'Base de Dados', icon: Settings },
   ];
 
   const updateSetting = (category: string, key: string, value: any) => {
@@ -830,8 +832,12 @@ export const SettingsManager = () => {
           </div>
         )}
 
+        {activeTab === 'database' && (
+          <DatabaseManager />
+        )}
+
         {/* Save Button for all tabs except profile (which has its own) */}
-        {activeTab !== 'profile' && (
+        {activeTab !== 'profile' && activeTab !== 'database' && (
           <div className="pt-6 border-t">
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
               Guardar Configurações
