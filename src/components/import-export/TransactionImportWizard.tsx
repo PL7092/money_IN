@@ -35,7 +35,7 @@ interface TransactionImportWizardProps {
 }
 
 export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = ({ onClose }) => {
-  const { accounts, categories, entities, aiRules, addTransaction, transactions, processTransactionWithAI, assets, savingsGoals, recurringTransactions } = useFinance();
+  const { accounts, categories, entities, aiRules, addTransaction, transactions, processTransactionWithAI } = useFinance();
   const [step, setStep] = useState(1);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [importMethod, setImportMethod] = useState<'file' | 'paste'>('file');
