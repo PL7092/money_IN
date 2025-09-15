@@ -713,6 +713,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   const checkForDuplicate = (parsed: any): boolean => {
     return transactions.some(t => 
       t.date === parsed.date && 
+      Math.abs(t.amount - parsed.amount) < 0.01 && 
       t.description.toLowerCase().includes(parsed.description.toLowerCase().substring(0, 10))
     );
   };
