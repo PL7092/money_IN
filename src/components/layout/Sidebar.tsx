@@ -25,8 +25,7 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'expenses', label: 'Despesas', icon: TrendingDown },
-  { id: 'income', label: 'Receitas', icon: TrendingUp },
+  { id: 'transactions', label: 'Transações', icon: CreditCard },
   { id: 'budget', label: 'Orçamentos', icon: Target },
   { id: 'accounts', label: 'Contas', icon: CreditCard },
   { id: 'savings', label: 'Poupanças por Objetivos', icon: Target },

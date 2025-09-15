@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Dashboard } from './components/Dashboard';
-import { ExpenseManager } from './components/expenses/ExpenseManager';
-import { IncomeManager } from './components/income/IncomeManager';
+import { TransactionManager } from './components/transactions/TransactionManager';
 import { BudgetManager } from './components/budget/BudgetManager';
 import { AccountsManager } from './components/accounts/AccountsManager';
 import { InvestmentManager } from './components/investments/InvestmentManager';
@@ -39,10 +38,8 @@ const AppContent = () => {
     switch (activeSection) {
       case 'dashboard':
         return <Dashboard />;
-      case 'expenses':
-        return <ExpenseManager />;
-      case 'income':
-        return <IncomeManager />;
+      case 'transactions':
+        return <TransactionManager />;
       case 'budget':
         return <BudgetManager />;
       case 'accounts':

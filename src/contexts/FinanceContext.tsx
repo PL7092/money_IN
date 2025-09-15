@@ -2,12 +2,13 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 export interface Transaction {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   description: string;
   category: string;
   subcategory?: string;
   account: string;
+  toAccount?: string; // For transfers
   date: string;
   recurring?: boolean;
   recurringId?: string;
@@ -449,15 +450,29 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     };
     setTransactions(prev => [...prev, newTransaction]);
 
-    // Update account balance
-    const isIncome = transaction.type === 'income';
-    setAccounts(prev => prev.map(account => 
-      account.id === transaction.account
-        ? { ...account, balance: account.balance + (isIncome ? transaction.amount : -transaction.amount) }
-        : account
-    ));
+    // Update account balances
+    if (transaction.type === 'transfer') {
+      // For transfers, subtract from source account and add to destination account
+      setAccounts(prev => prev.map(account => {
+        if (account.id === transaction.account) {
+          return { ...account, balance: account.balance - transaction.amount };
+        }
+        if (account.id === transaction.toAccount) {
+          return { ...account, balance: account.balance + transaction.amount };
+        }
+        return account;
+      }));
+    } else {
+      // For income/expense, update single account
+      const isIncome = transaction.type === 'income';
+      setAccounts(prev => prev.map(account => 
+        account.id === transaction.account
+          ? { ...account, balance: account.balance + (isIncome ? transaction.amount : -transaction.amount) }
+          : account
+      ));
+    }
 
-    // Update budget spent amount
+    // Update budget spent amount (only for expenses, not transfers)
     if (transaction.type === 'expense') {
       setBudgets(prev => prev.map(budget =>
         budget.category === transaction.category
@@ -478,15 +493,29 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     if (transaction) {
       setTransactions(prev => prev.filter(t => t.id !== id));
       
-      // Revert account balance
-      const isIncome = transaction.type === 'income';
-      setAccounts(prev => prev.map(account => 
-        account.id === transaction.account
-          ? { ...account, balance: account.balance - (isIncome ? transaction.amount : -transaction.amount) }
-          : account
-      ));
+      // Revert account balances
+      if (transaction.type === 'transfer') {
+        // For transfers, revert both accounts
+        setAccounts(prev => prev.map(account => {
+          if (account.id === transaction.account) {
+            return { ...account, balance: account.balance + transaction.amount };
+          }
+          if (account.id === transaction.toAccount) {
+            return { ...account, balance: account.balance - transaction.amount };
+          }
+          return account;
+        }));
+      } else {
+        // For income/expense, revert single account
+        const isIncome = transaction.type === 'income';
+        setAccounts(prev => prev.map(account => 
+          account.id === transaction.account
+            ? { ...account, balance: account.balance - (isIncome ? transaction.amount : -transaction.amount) }
+            : account
+        ));
+      }
 
-      // Revert budget spent amount
+      // Revert budget spent amount (only for expenses, not transfers)
       if (transaction.type === 'expense') {
         setBudgets(prev => prev.map(budget =>
           budget.category === transaction.category
