@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Tag, MapPin } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Tag, MapPin, Car, Target, Repeat, Users, Brain, AlertTriangle } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { toInputDate, configureDateInput } from '../../utils/dateUtils';
 
@@ -9,7 +9,19 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, onClose }) => {
-  const { addTransaction, updateTransaction, categories, accounts, entities, assets, savingsGoals, processTransactionWithAI, addAIRule } = useFinance();
+  const { 
+    addTransaction, 
+    updateTransaction, 
+    categories, 
+    accounts, 
+    entities, 
+    assets, 
+    savingsGoals, 
+    recurringTransactions,
+    processTransactionWithAI, 
+    addAIRule 
+  } = useFinance();
+  
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',
@@ -21,12 +33,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     toAccount: '',
     assetId: '',
     savingsGoalId: '',
+    recurringTransactionId: '',
     date: toInputDate(new Date()),
     tags: '',
     location: '',
     recurring: false
   });
-  const [aiSuggestions, setAiSuggestions] = useState<Partial<Transaction> | null>(null);
+  
+  const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingRule, setPendingRule] = useState<any>(null);
@@ -44,6 +58,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         toAccount: transaction.toAccount || '',
         assetId: transaction.assetId || '',
         savingsGoalId: transaction.savingsGoalId || '',
+        recurringTransactionId: transaction.recurringTransactionId || '',
         date: toInputDate(transaction.date),
         tags: transaction.tags ? transaction.tags.join(', ') : '',
         location: transaction.location || '',
@@ -63,10 +78,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar subcategoria obrigatória para não-transferências
-    if (formData.type !== 'transfer' && !formData.subcategory) {
-      alert('Por favor, seleccione uma subcategoria.');
-      return;
+    // Validar campos obrigatórios baseados no tipo
+    if (formData.type === 'transfer') {
+      if (!formData.toAccount) {
+        alert('Por favor, seleccione a conta de destino para a transferência.');
+        return;
+      }
+      if (formData.account === formData.toAccount) {
+        alert('A conta de origem e destino não podem ser iguais.');
+        return;
+      }
+    } else {
+      if (!formData.category) {
+        alert('Por favor, seleccione uma categoria.');
+        return;
+      }
+      if (!formData.subcategory) {
+        alert('Por favor, seleccione uma subcategoria.');
+        return;
+      }
     }
     
     const transactionData = {
@@ -75,7 +105,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
       description: formData.description,
       entity: formData.entity || undefined,
       category: formData.type === 'transfer' ? 'Transferência' : formData.category,
-      subcategory: formData.subcategory || undefined,
+      subcategory: formData.type === 'transfer' ? undefined : formData.subcategory,
       account: formData.account,
       toAccount: formData.type === 'transfer' ? formData.toAccount : undefined,
       assetId: formData.assetId || undefined,
@@ -108,7 +138,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     const description = e.target.value;
     setFormData(prev => ({ ...prev, description }));
     
-    // Processar com AI se a descrição for suficientemente longa
+    // Processar com AI se a descrição for suficientemente longa e não for transferência
     if (description.length > 3 && formData.amount && formData.type !== 'transfer') {
       try {
         const suggestions = await processTransactionWithAI(description, parseFloat(formData.amount));
@@ -116,7 +146,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
           setAiSuggestions(suggestions);
           setShowAiSuggestions(true);
         } else if (suggestions.confidence && suggestions.confidence > 0.4) {
-          // Sugestão com confiança média - pedir confirmação para aprender
           setPendingRule({
             description,
             amount: parseFloat(formData.amount),
@@ -132,7 +161,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
 
   const handleConfirmLearning = (confirmed: boolean) => {
     if (confirmed && pendingRule) {
-      // Aplicar sugestões
       setFormData(prev => ({
         ...prev,
         entity: pendingRule.suggestions.entity || prev.entity,
@@ -141,10 +169,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         tags: pendingRule.suggestions.tags ? pendingRule.suggestions.tags.join(', ') : prev.tags
       }));
       
-      // Criar nova regra AI para aprender
       const newRule = {
         name: `Regra automática - ${pendingRule.suggestions.entity || pendingRule.description}`,
-        pattern: pendingRule.description.split(' ')[0], // Primeira palavra como padrão
+        pattern: pendingRule.description.split(' ')[0],
         patternType: 'contains' as const,
         entity: pendingRule.suggestions.entity,
         category: pendingRule.suggestions.category,
@@ -161,6 +188,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     setShowConfirmDialog(false);
     setPendingRule(null);
   };
+
   const applyAiSuggestions = () => {
     if (aiSuggestions) {
       setFormData(prev => ({
@@ -178,8 +206,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     setFormData(prev => ({
       ...prev,
       type,
-      category: type === 'transfer' ? 'Transferência' : '',
-      toAccount: type === 'transfer' ? prev.toAccount : ''
+      category: type === 'transfer' ? 'Transferência' : prev.category,
+      subcategory: type === 'transfer' ? '' : prev.subcategory,
+      toAccount: type === 'transfer' ? prev.toAccount : '',
+      // Limpar associações que não fazem sentido para transferências
+      assetId: type === 'transfer' ? '' : prev.assetId,
+      savingsGoalId: type === 'transfer' ? '' : prev.savingsGoalId,
+      recurringTransactionId: type === 'transfer' ? '' : prev.recurringTransactionId
     }));
   };
 
@@ -210,28 +243,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     }
   };
 
+  const selectedCategory = categories.find(cat => cat.name === formData.category);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900">
             {transaction ? 'Editar Transação' : 'Nova Transação'}
           </h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Transaction Type Selection */}
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Transaction Type Selection - Compact */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-2">
               Tipo de Transação *
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {(['income', 'expense', 'transfer'] as const).map((type) => {
                 const Icon = getTypeIcon(type);
                 const color = getTypeColor(type);
@@ -242,13 +277,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                     key={type}
                     type="button"
                     onClick={() => handleTypeChange(type)}
-                    className={`flex items-center justify-center p-4 rounded-lg border-2 transition-colors ${
+                    className={`flex items-center justify-center p-2 rounded-lg border-2 transition-colors text-sm ${
                       isSelected
                         ? `border-${color}-500 bg-${color}-50 text-${color}-700`
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <Icon size={20} className="mr-2" />
+                    <Icon size={16} className="mr-1" />
                     {getTypeLabel(type)}
                   </button>
                 );
@@ -256,34 +291,62 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             </div>
           </div>
 
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor *
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
+          {/* Basic Info - Compact Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Valor *
+              </label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">€</span>
+                <input
+                  type="number"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  required
+                  className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Data *
+              </label>
               <input
-                type="number"
-                name="amount"
-                value={formData.amount}
+                type="date"
+                name="date"
+                value={formData.date}
                 onChange={handleChange}
-                step="0.01"
-                min="0"
                 required
-                className={`w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' :
-                  formData.type === 'expense' ? 'focus:ring-red-500' :
-                  'focus:ring-blue-500'
-                }`}
-                placeholder="0.00"
+                lang="pt-PT"
+                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                <MapPin size={12} className="inline mr-1" />
+                Local
+              </label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ex: Lisboa, Porto"
               />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Descrição *
             </label>
             <input
@@ -292,11 +355,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               value={formData.description}
               onChange={handleDescriptionChange}
               required
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                formData.type === 'income' ? 'focus:ring-green-500' :
-                formData.type === 'expense' ? 'focus:ring-red-500' :
-                'focus:ring-blue-500'
-              }`}
+              className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder={
                 formData.type === 'income' ? 'Ex: Salário Mensal' :
                 formData.type === 'expense' ? 'Ex: Supermercado Continente' :
@@ -305,123 +364,81 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             />
           </div>
 
-          {/* AI Suggestions */}
+          {/* AI Suggestions - Compact */}
           {showAiSuggestions && aiSuggestions && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-blue-900 flex items-center">
-                  🤖 Sugestões da IA (Confiança: {((aiSuggestions.confidence || 0) * 100).toFixed(0)}%)
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-medium text-blue-900 flex items-center">
+                  <Brain size={12} className="mr-1" />
+                  Sugestões IA ({((aiSuggestions.confidence || 0) * 100).toFixed(0)}%)
                 </h4>
                 <button
                   type="button"
                   onClick={() => setShowAiSuggestions(false)}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="text-blue-600 hover:text-blue-800 text-xs"
                 >
                   ✕
                 </button>
               </div>
-              <div className="space-y-2 text-sm">
-                {aiSuggestions.entity && (
-                  <p><strong>Entidade:</strong> {aiSuggestions.entity}</p>
-                )}
-                {aiSuggestions.category && (
-                  <p><strong>Categoria:</strong> {aiSuggestions.category}</p>
-                )}
-                {aiSuggestions.subcategory && (
-                  <p><strong>Subcategoria:</strong> {aiSuggestions.subcategory}</p>
-                )}
-                {aiSuggestions.tags && (
-                  <p><strong>Tags:</strong> {aiSuggestions.tags.join(', ')}</p>
-                )}
+              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                {aiSuggestions.entity && <p><strong>Entidade:</strong> {aiSuggestions.entity}</p>}
+                {aiSuggestions.category && <p><strong>Categoria:</strong> {aiSuggestions.category}</p>}
+                {aiSuggestions.subcategory && <p><strong>Subcategoria:</strong> {aiSuggestions.subcategory}</p>}
+                {aiSuggestions.tags && <p><strong>Tags:</strong> {aiSuggestions.tags.join(', ')}</p>}
               </div>
               <button
                 type="button"
                 onClick={applyAiSuggestions}
-                className="mt-3 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colours"
+                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
               >
                 Aplicar Sugestões
               </button>
             </div>
           )}
 
-          {/* Confirmation Dialog */}
+          {/* Confirmation Dialog - Compact */}
           {showConfirmDialog && pendingRule && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <h4 className="text-sm font-medium text-yellow-900 flex items-center">
-                  🤔 A IA encontrou algo semelhante
-                </h4>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-center mb-2">
+                <AlertTriangle size={12} className="text-yellow-600 mr-1" />
+                <h4 className="text-xs font-medium text-yellow-900">IA encontrou padrão similar</h4>
               </div>
-              <div className="space-y-2 text-sm mb-3">
-                {pendingRule.suggestions.entity && (
-                  <p><strong>Entidade:</strong> {pendingRule.suggestions.entity}</p>
-                )}
-                {pendingRule.suggestions.category && (
-                  <p><strong>Categoria:</strong> {pendingRule.suggestions.category}</p>
-                )}
-                {pendingRule.suggestions.subcategory && (
-                  <p><strong>Subcategoria:</strong> {pendingRule.suggestions.subcategory}</p>
-                )}
+              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                {pendingRule.suggestions.entity && <p><strong>Entidade:</strong> {pendingRule.suggestions.entity}</p>}
+                {pendingRule.suggestions.category && <p><strong>Categoria:</strong> {pendingRule.suggestions.category}</p>}
               </div>
-              <p className="text-sm text-yellow-700 mb-3">
-                Deseja aplicar estas sugestões e ensinar a IA a reconhecer transações semelhantes no futuro?
-              </p>
+              <p className="text-xs text-yellow-700 mb-2">Aplicar e ensinar IA?</p>
               <div className="flex space-x-2">
                 <button
                   type="button"
                   onClick={() => handleConfirmLearning(true)}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colours"
+                  className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                 >
-                  Sim, aplicar e aprender
+                  Sim
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirmLearning(false)}
-                  className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colours"
+                  className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
                 >
-                  Não, obrigado
+                  Não
                 </button>
               </div>
             </div>
           )}
-          {/* Entity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Entidade
-            </label>
-            <select
-              name="entity"
-              value={formData.entity}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                formData.type === 'income' ? 'focus:ring-green-500' :
-                formData.type === 'expense' ? 'focus:ring-red-500' :
-                'focus:ring-blue-500'
-              }`}
-            >
-              <option value="">Seleccionar entidade (opcional)</option>
-              {entities.filter(e => e.active).map(entity => (
-                <option key={entity.id} value={entity.name}>{entity.name}</option>
-              ))}
-            </select>
-          </div>
 
-          {/* Accounts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Accounts - Compact */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {formData.type === 'transfer' ? 'Conta de Origem *' : 'Conta *'}
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                {formData.type === 'transfer' ? 'Conta Origem *' : 'Conta *'}
               </label>
               <select
                 name="account"
                 value={formData.account}
                 onChange={handleChange}
                 required
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' :
-                  formData.type === 'expense' ? 'focus:ring-red-500' :
-                  'focus:ring-blue-500'
-                }`}
+                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Seleccionar conta</option>
                 {accounts.filter(a => a.status === 'active').map(account => (
@@ -432,15 +449,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
 
             {formData.type === 'transfer' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Conta de Destino *
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Conta Destino *
                 </label>
                 <select
                   name="toAccount"
                   value={formData.toAccount}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Seleccionar conta</option>
                   {accounts
@@ -453,60 +470,29 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             )}
           </div>
 
-          {/* Asset and Savings Goal Association */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ativo Associado
-              </label>
-              <select
-                name="assetId"
-                value={formData.assetId}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' :
-                  formData.type === 'expense' ? 'focus:ring-red-500' :
-                  'focus:ring-blue-500'
-                }`}
-              >
-                <option value="">Nenhum ativo (opcional)</option>
-                {assets.filter(a => a.active).map(asset => (
-                  <option key={asset.id} value={asset.id}>
-                    {asset.name} ({asset.type === 'vehicle' ? '🚗' : asset.type === 'property' ? '🏠' : asset.type === 'equipment' ? '💻' : '📦'})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Objetivo de Poupança
-              </label>
-              <select
-                name="savingsGoalId"
-                value={formData.savingsGoalId}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' :
-                  formData.type === 'expense' ? 'focus:ring-red-500' :
-                  'focus:ring-blue-500'
-                }`}
-              >
-                <option value="">Nenhum objetivo (opcional)</option>
-                {savingsGoals.filter(g => g.status === 'active').map(goal => (
-                  <option key={goal.id} value={goal.id}>
-                    🎯 {goal.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Category and Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {formData.type !== 'transfer' && (
+          {/* Entity and Category - Only for non-transfers */}
+          {formData.type !== 'transfer' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <Users size={12} className="inline mr-1" />
+                  Entidade
+                </label>
+                <select
+                  name="entity"
+                  value={formData.entity}
+                  onChange={handleChange}
+                  className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Seleccionar entidade</option>
+                  {entities.filter(e => e.active).map(entity => (
+                    <option key={entity.id} value={entity.name}>{entity.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Categoria *
                 </label>
                 <select
@@ -514,71 +500,112 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                   value={formData.category}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                    formData.type === 'income' ? 'focus:ring-green-500' : 'focus:ring-red-500'
-                  }`}
+                  className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Seleccionar categoria</option>
                   {categories
                     .filter(cat => cat.active && (cat.type === formData.type || cat.type === 'both'))
                     .map(category => (
-                    <option key={category.id} value={category.name}>{category.name}</option>
+                      <option key={category.id} value={category.name}>{category.name}</option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Subcategoria *
+                </label>
+                <select
+                  name="subcategory"
+                  value={formData.subcategory}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!formData.category}
+                >
+                  <option value="">Seleccionar subcategoria</option>
+                  {selectedCategory?.subcategories.map(subcategory => (
+                    <option key={subcategory} value={subcategory}>{subcategory}</option>
                   ))}
                 </select>
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Data *
-              </label>
-              <div className="date-input-pt" data-placeholder="DD/MM/AAAA">
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                  lang="pt-PT"
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                    formData.type === 'income' ? 'focus:ring-green-500' :
-                    formData.type === 'expense' ? 'focus:ring-red-500' :
-                    'focus:ring-blue-500'
-                  }`}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Subcategory (only for non-transfers) */}
-          {formData.type !== 'transfer' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subcategoria *
-              </label>
-              <select
-                name="subcategory"
-                value={formData.subcategory}
-                onChange={handleChange}
-                required
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                  formData.type === 'income' ? 'focus:ring-green-500' : 'focus:ring-red-500'
-                }`}
-              >
-                <option value="">Seleccionar subcategoria</option>
-                {formData.category && categories
-                  .find(cat => cat.name === formData.category)
-                  ?.subcategories.map(subcategory => (
-                    <option key={subcategory} value={subcategory}>{subcategory}</option>
-                  ))}
-              </select>
             </div>
           )}
 
-          {/* Tags */}
+          {/* Associations - Compact Grid */}
+          {formData.type !== 'transfer' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">
+                Associações (Opcional)
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    <Car size={12} className="inline mr-1" />
+                    Ativo
+                  </label>
+                  <select
+                    name="assetId"
+                    value={formData.assetId}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Nenhum ativo</option>
+                    {assets.filter(a => a.active).map(asset => (
+                      <option key={asset.id} value={asset.id}>
+                        {asset.type === 'vehicle' ? '🚗' : asset.type === 'property' ? '🏠' : asset.type === 'equipment' ? '💻' : '📦'} {asset.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    <Target size={12} className="inline mr-1" />
+                    Poupança
+                  </label>
+                  <select
+                    name="savingsGoalId"
+                    value={formData.savingsGoalId}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Nenhum objetivo</option>
+                    {savingsGoals.filter(g => g.status === 'active').map(goal => (
+                      <option key={goal.id} value={goal.id}>
+                        🎯 {goal.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    <Repeat size={12} className="inline mr-1" />
+                    Recorrente
+                  </label>
+                  <select
+                    name="recurringTransactionId"
+                    value={formData.recurringTransactionId}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Não recorrente</option>
+                    {recurringTransactions.filter(r => r.active && r.type === formData.type).map(recurring => (
+                      <option key={recurring.id} value={recurring.id}>
+                        🔄 {recurring.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tags - Compact */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Tag size={16} className="inline mr-1" />
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              <Tag size={12} className="inline mr-1" />
               Tags
             </label>
             <input
@@ -586,78 +613,63 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               name="tags"
               value={formData.tags}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                formData.type === 'income' ? 'focus:ring-green-500' :
-                formData.type === 'expense' ? 'focus:ring-red-500' :
-                'focus:ring-blue-500'
-              }`}
+              className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Ex: essencial, mensal (separadas por vírgulas)"
             />
           </div>
 
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <MapPin size={16} className="inline mr-1" />
-              Local
-            </label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
-                formData.type === 'income' ? 'focus:ring-green-500' :
-                formData.type === 'expense' ? 'focus:ring-red-500' :
-                'focus:ring-blue-500'
-              }`}
-              placeholder="Ex: Lisboa, Porto"
-            />
-          </div>
-
-          {/* Recurring */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="recurring"
-              id="recurring"
-              checked={formData.recurring}
-              onChange={handleChange}
-              className={`h-4 w-4 focus:ring-2 border-gray-300 rounded ${
-                formData.type === 'income' ? 'text-green-600 focus:ring-green-500' :
-                formData.type === 'expense' ? 'text-red-600 focus:ring-red-500' :
-                'text-blue-600 focus:ring-blue-500'
-              }`}
-            />
-            <label htmlFor="recurring" className="ml-2 text-sm text-gray-700">
-              Transação recorrente
-            </label>
-          </div>
-
-          {/* Transfer Info */}
+          {/* Transfer Info - Compact */}
           {formData.type === 'transfer' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-700">
-                <strong>Nota:</strong> As transferências movem dinheiro entre as suas contas e não afectam 
-                os orçamentos ou cálculos de receitas/despesas. O valor será subtraído da conta de origem 
-                e adicionado à conta de destino.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-700">
+                <strong>Transferência:</strong> Move dinheiro entre contas sem afetar orçamentos.
               </p>
             </div>
           )}
 
-          <div className="flex space-x-3 pt-4">
+          {/* Current Associations Display */}
+          {transaction && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <h4 className="text-xs font-medium text-gray-700 mb-2">Associações Atuais</h4>
+              <div className="flex flex-wrap gap-1">
+                {transaction.assetId && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                    {assets.find(a => a.id === transaction.assetId)?.name || 'Ativo'}
+                  </span>
+                )}
+                {transaction.savingsGoalId && (
+                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    {savingsGoals.find(g => g.id === transaction.savingsGoalId)?.name || 'Poupança'}
+                  </span>
+                )}
+                {transaction.recurringTransactionId && (
+                  <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                    Recorrente
+                  </span>
+                )}
+                {transaction.tags && transaction.tags.map(tag => (
+                  <span key={tag} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons - Compact */}
+          <div className="flex space-x-2 pt-3 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancelar
             </button>
+            
             {!transaction && (
               <button
                 type="button"
                 onClick={() => {
-                  // Convert to recurring transaction
                   const recurringData = {
                     name: formData.description,
                     frequency: 'monthly' as const,
@@ -666,25 +678,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                     alertOnVariation: true,
                     variationThreshold: 20
                   };
-                  
-                  // In a real implementation, this would open a recurring form with pre-filled data
                   console.log('Convert to recurring:', recurringData);
                   alert('Funcionalidade de conversão para recorrente será implementada');
                 }}
-                className="px-4 py-2 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
+                className="px-3 py-2 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
               >
-                Tornar Recorrente
+                <Repeat size={14} className="inline mr-1" />
+                Recorrente
               </button>
             )}
+            
             <button
               type="submit"
-              className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
+              className={`flex-1 px-3 py-2 text-sm text-white rounded-lg transition-colors ${
                 formData.type === 'income' ? 'bg-green-600 hover:bg-green-700' :
                 formData.type === 'expense' ? 'bg-red-600 hover:bg-red-700' :
                 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
-              {transaction ? 'Actualizar' : 'Guardar'}
+              {transaction ? 'Atualizar' : 'Guardar'}
             </button>
           </div>
         </form>

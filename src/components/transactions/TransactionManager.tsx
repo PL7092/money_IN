@@ -418,10 +418,10 @@ export const TransactionManager = () => {
                         </div>
                         {transaction.tags && transaction.tags.length > 0 && (
                           <div className="flex items-center mt-1">
-                            <Tag size={14} className="text-gray-400 mr-1" />
+                            <Tag size={12} className="text-gray-400 mr-1" />
                             <div className="flex space-x-1">
                               {transaction.tags.map(tag => (
-                                <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
                                   {tag}
                                 </span>
                               ))}
@@ -432,21 +432,21 @@ export const TransactionManager = () => {
                     </div>
                     
                     <div className="flex items-center space-x-3">
-                      <span className={`text-lg font-bold ${colorClass}`}>
+                      <span className={`text-base font-bold ${colorClass}`}>
                         {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}€{transaction.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <div className="flex space-x-1">
                         <button
                           onClick={() => handleEdit(transaction)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                         >
-                          <Edit size={16} />
+                          <Edit size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(transaction.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>

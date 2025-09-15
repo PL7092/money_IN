@@ -231,9 +231,8 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
     
     return null;
   };
-
-  const parseTabSeparated = (line: string): any | null => {
-    const parts = line.split('\t').map(p => p.trim());
+      // Take the first amount found (should be the transaction amount, not balance)
+      if (!amount) {
     if (parts.length < 3) return null;
     
     return extractFromParts(parts);
