@@ -130,7 +130,19 @@ export const AccountForm: React.FC<AccountFormProps> = ({ account, onClose }) =>
       currency: formData.currency,
       institution: formData.institution,
       color: formData.color,
-      status: formData.status
+      status: formData.status,
+      ...(formData.type === 'investment' && {
+        investmentType: formData.investmentType,
+        investmentDetails: {
+          symbol: formData.symbol || undefined,
+          quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
+          averageCost: formData.averageCost ? parseFloat(formData.averageCost) : undefined,
+          currentPrice: formData.currentPrice ? parseFloat(formData.currentPrice) : undefined,
+          lastPriceUpdate: formData.currentPrice ? new Date().toISOString() : undefined,
+          broker: formData.broker || undefined,
+          notes: formData.notes || undefined
+        }
+      })
     };
 
     if (account) {

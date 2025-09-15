@@ -33,6 +33,16 @@ export interface Account {
   status: 'active' | 'archived';
   createdAt: string;
   updatedAt: string;
+  investmentType?: 'stocks' | 'bonds' | 'etf' | 'crypto' | 'real_estate' | 'commodities' | 'other';
+  investmentDetails?: {
+    symbol?: string;
+    quantity?: number;
+    averageCost?: number;
+    currentPrice?: number;
+    lastPriceUpdate?: string;
+    broker?: string;
+    notes?: string;
+  };
   statusHistory: Array<{
     status: 'active' | 'archived';
     date: string;
@@ -221,6 +231,14 @@ interface FinanceContextType {
   addAccount: (account: Omit<Account, 'id'>) => void;
   updateAccount: (id: string, account: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
+  updateInvestmentValue: (accountId: string, newValue: number, currentPrice?: number) => void;
+  getInvestmentAccounts: () => Account[];
+  getInvestmentPerformance: () => {
+    totalInvested: number;
+    currentValue: number;
+    totalReturn: number;
+    returnPercentage: number;
+  };
   addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => void;
   updateBudget: (id: string, budget: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
@@ -1200,6 +1218,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       addAccount,
       updateAccount,
       deleteAccount,
+      updateInvestmentValue,
+      getInvestmentAccounts,
+      getInvestmentPerformance,
       addBudget,
       updateBudget,
       deleteBudget,
