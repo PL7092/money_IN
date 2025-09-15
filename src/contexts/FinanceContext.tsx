@@ -1218,10 +1218,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   };
 
   const processTransactionWithAI = async (description: string, amount: number): Promise<Partial<Transaction>> => {
-    // Simular processamento de IA
+    // Simulate AI processing with enhanced logic
     const activeRules = aiRules.filter(rule => rule.active);
     
-    // Primeiro, verificar regras exactas
+    // First, check exact rules
     for (const rule of activeRules.sort((a, b) => a.priority - b.priority)) {
       let matches = false;
       
@@ -1257,7 +1257,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       }
     }
     
-    // Segundo, procurar padrões similares com base em transações existentes
+    // Second, look for similar patterns based on existing transactions
     const similarTransactions = transactions.filter(t => {
       const similarity = calculateSimilarity(description, t.description);
       return similarity > 0.6 && t.type !== 'transfer';
@@ -1279,7 +1279,28 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         subcategory: mostSimilar.subcategory,
         tags: mostSimilar.tags,
         aiProcessed: true,
-        confidence: similarity * 0.8 // Reduzir confiança para sugestões baseadas em similaridade
+        confidence: similarity * 0.8 // Reduce confidence for similarity-based suggestions
+      };
+    }
+    
+    // Third, try to infer from amount patterns
+    if (amount > 2000) {
+      // Likely salary or large income
+      return {
+        category: 'Salário',
+        subcategory: 'Salário Base',
+        aiProcessed: true,
+        confidence: 0.6
+      };
+    }
+    
+    if (amount < 10) {
+      // Likely small expense
+      return {
+        category: 'Outros',
+        subcategory: 'Pequenas Despesas',
+        aiProcessed: true,
+        confidence: 0.4
       };
     }
     

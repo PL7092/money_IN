@@ -1,43 +1,15 @@
 import React, { useState } from 'react';
-import { Upload, Download, FileText, FileSpreadsheet, File, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Download, FileText, FileSpreadsheet, File, CheckCircle, AlertCircle, Brain, Eye, Edit } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { TransactionImportWizard } from './TransactionImportWizard';
 
 export const ImportExport = () => {
   const { accounts } = useFinance();
   const [activeTab, setActiveTab] = useState('import');
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState('');
-  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length > 0) {
-      setUploadedFiles(files);
-      setShowAccountSelector(true);
-    }
-  };
-
-  const handleImportConfirm = () => {
-    if (!selectedAccount) {
-      alert('Por favor, seleccione uma conta para importar os dados.');
-      return;
-    }
-
-    setShowAccountSelector(false);
-    setUploadStatus('uploading');
-    
-    // Simulate upload process with account selection
-    setTimeout(() => {
-      setUploadStatus('success');
-      console.log(`Importando para a conta: ${selectedAccount}`);
-    }, 2000);
-  };
-
-  const handleImportCancel = () => {
-    setShowAccountSelector(false);
-    setUploadedFiles([]);
-    setSelectedAccount('');
+  const handleStartImport = () => {
+    setShowImportWizard(true);
   };
 
   const supportedFormats = [
@@ -57,7 +29,15 @@ export const ImportExport = () => {
       type: 'PDF',
       icon: File,
       extensions: '.pdf',
-      description: 'Extratos bancários em PDF (com OCR automático)'
+      description: 'Extratos bancários em PDF (com OCR automático)',
+      features: ['OCR inteligente', 'Detecção automática de padrões', 'Suporte multi-banco']
+    },
+    {
+      type: 'Copy/Paste',
+      icon: FileText,
+      extensions: 'Texto',
+      description: 'Cole dados diretamente do extrato online',
+      features: ['Parsing inteligente', 'Detecção de formato', 'Limpeza automática']
     }
   ];
 
@@ -143,114 +123,47 @@ export const ImportExport = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Carregar Ficheiros</h3>
             
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-              <input
-                type="file"
-                multiple
-                accept=".xlsx,.xls,.csv,.pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" className="cursor-pointer">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* File Upload */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
                 <Upload size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-lg font-medium text-gray-900 mb-2">
-                  Clique para carregar ou arraste ficheiros aqui
+                  Importação de Ficheiros
                 </p>
-                <p className="text-sm text-gray-600">
-                  Suporte para Excel, CSV e PDF (máximo 10MB por ficheiro)
+                <p className="text-sm text-gray-600 mb-4">
+                  Excel, CSV, PDF (máximo 10MB)
                 </p>
-              </label>
+                <button
+                  onClick={handleStartImport}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Iniciar Importação
+                </button>
+              </div>
+
+              {/* Copy/Paste Import */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                <FileText size={48} className="text-gray-400 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-900 mb-2">
+                  Copy/Paste
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Cole dados diretamente do extrato
+                </p>
+                <button
+                  onClick={() => setShowImportWizard(true)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Colar Dados
+                </button>
+              </div>
             </div>
-
-            {/* Account Selection Modal */}
-            {showAccountSelector && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl max-w-md w-full">
-                  <div className="p-6 border-b border-gray-200">
-                    <h3 className="text-lg font-bold text-gray-900">Seleccionar Conta para Importação</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Escolha a conta onde pretende importar as transações
-                    </p>
-                  </div>
-                  
-                  <div className="p-6 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Conta de Destino *
-                      </label>
-                      <select
-                        value={selectedAccount}
-                        onChange={(e) => setSelectedAccount(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Seleccionar conta...</option>
-                        {accounts.filter(account => account.status === 'active').map(account => (
-                          <option key={account.id} value={account.id}>
-                            {account.name} ({account.institution}) - {account.currency}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-700">
-                        <strong>Ficheiros seleccionados:</strong>
-                      </p>
-                      <ul className="text-sm text-blue-600 mt-1">
-                        {uploadedFiles.map((file, index) => (
-                          <li key={index}>• {file.name}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-3 p-6 border-t border-gray-200">
-                    <button
-                      onClick={handleImportCancel}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleImportConfirm}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Importar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Upload Status */}
-            {uploadStatus !== 'idle' && (
-              <div className="mt-4">
-                {uploadStatus === 'uploading' && (
-                  <div className="flex items-center text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    A processar ficheiros na conta seleccionada...
-                  </div>
-                )}
-                {uploadStatus === 'success' && (
-                  <div className="flex items-center text-green-600">
-                    <CheckCircle size={16} className="mr-2" />
-                    {uploadedFiles.length} ficheiro(s) importado(s) com sucesso para a conta seleccionada!
-                  </div>
-                )}
-                {uploadStatus === 'error' && (
-                  <div className="flex items-center text-red-600">
-                    <AlertCircle size={16} className="mr-2" />
-                    Erro ao processar ficheiros. Tente novamente.
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Supported Formats */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Formatos Suportados</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {supportedFormats.map((format, index) => {
                 const Icon = format.icon;
                 return (
@@ -261,6 +174,16 @@ export const ImportExport = () => {
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{format.extensions}</p>
                     <p className="text-xs text-gray-500">{format.description}</p>
+                    {format.features && (
+                      <div className="mt-2">
+                        {format.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-center text-xs text-blue-600 mt-1">
+                            <CheckCircle size={12} className="mr-1" />
+                            {feature}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -268,24 +191,80 @@ export const ImportExport = () => {
           </div>
 
           {/* AI Processing Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">Processamento Inteligente</h3>
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+              <Brain className="mr-2" size={20} />
+              Processamento Inteligente com IA
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white p-4 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Categorização Automática</h4>
-                <p className="text-sm text-blue-700">
-                  A AI identifica automaticamente categorias e subcategorias das transações
+                <h4 className="font-medium text-purple-800 mb-2">🤖 Categorização Automática</h4>
+                <p className="text-sm text-purple-700">
+                  IA analisa descrições e aplica regras para categorizar automaticamente
                 </p>
               </div>
               <div className="bg-white p-4 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Detecção de Duplicados</h4>
-                <p className="text-sm text-blue-700">
+                <h4 className="font-medium text-purple-800 mb-2">🔍 Detecção de Duplicados</h4>
+                <p className="text-sm text-purple-700">
                   Sistema inteligente previne importação de transações duplicadas
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <h4 className="font-medium text-purple-800 mb-2">📊 Análise de Padrões</h4>
+                <p className="text-sm text-purple-700">
+                  Identifica padrões em transações similares do histórico
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <h4 className="font-medium text-purple-800 mb-2">✅ Revisão Inteligente</h4>
+                <p className="text-sm text-purple-700">
+                  Interface de aprovação com sugestões e nível de confiança
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Recent Imports */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Importações Recentes</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center">
+                  <CheckCircle size={16} className="text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">extrato_janeiro_2024.xlsx</p>
+                    <p className="text-xs text-gray-600">45 transações • 89% categorizadas automaticamente</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-green-600">Concluída</p>
+                  <p className="text-xs text-gray-500">15 Jan 2024, 14:30</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center">
+                  <Brain size={16} className="text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">extrato_dezembro_2023.pdf</p>
+                    <p className="text-xs text-gray-600">32 transações • 76% categorizadas automaticamente</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-blue-600">Processada</p>
+                  <p className="text-xs text-gray-500">31 Dez 2023, 16:45</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Import Wizard Modal */}
+      {showImportWizard && (
+        <TransactionImportWizard
+          onClose={() => setShowImportWizard(false)}
+        />
       )}
 
       {activeTab === 'export' && (
