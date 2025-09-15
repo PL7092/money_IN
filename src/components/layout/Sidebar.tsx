@@ -35,6 +35,7 @@ const menuItems = [
   { id: 'reports', label: 'Relatórios', icon: FileText },
   { id: 'ai-advisor', label: 'Conselheiro AI', icon: Brain },
   { id: 'import-export', label: 'Importar/Exportar', icon: Download },
+  { id: 'data-management', label: 'Gestão de Dados', icon: Settings },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 

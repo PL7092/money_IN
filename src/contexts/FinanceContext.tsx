@@ -5,6 +5,7 @@ export interface Transaction {
   type: 'income' | 'expense' | 'transfer';
   amount: number;
   description: string;
+  entity?: string;
   category: string;
   subcategory?: string;
   account: string;
@@ -15,6 +16,8 @@ export interface Transaction {
   tags?: string[];
   location?: string;
   receipt?: string;
+  aiProcessed?: boolean;
+  confidence?: number;
 }
 
 export interface Account {
@@ -153,6 +156,46 @@ export interface SavingsGoal {
   }>;
 }
 
+export interface Entity {
+  id: string;
+  name: string;
+  type: 'person' | 'company' | 'government' | 'other';
+  category?: string;
+  aliases: string[];
+  defaultCategory?: string;
+  defaultSubcategory?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  type: 'income' | 'expense' | 'both';
+  subcategories: string[];
+  color: string;
+  icon?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIRule {
+  id: string;
+  name: string;
+  pattern: string;
+  patternType: 'contains' | 'startsWith' | 'endsWith' | 'regex';
+  entity?: string;
+  category?: string;
+  subcategory?: string;
+  tags?: string[];
+  confidence: number;
+  priority: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 interface FinanceContextType {
   transactions: Transaction[];
   accounts: Account[];
@@ -160,7 +203,9 @@ interface FinanceContextType {
   recurringTransactions: RecurringTransaction[];
   assets: Asset[];
   savingsGoals: SavingsGoal[];
-  categories: string[];
+  entities: Entity[];
+  categories: Category[];
+  aiRules: AIRule[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
@@ -180,6 +225,16 @@ interface FinanceContextType {
   updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => void;
   deleteSavingsGoal: (id: string) => void;
   addSavingsTransaction: (goalId: string, transaction: Omit<SavingsGoal['transactions'][0], 'id'>) => void;
+  addEntity: (entity: Omit<Entity, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateEntity: (id: string, entity: Partial<Entity>) => void;
+  deleteEntity: (id: string) => void;
+  addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateCategory: (id: string, category: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
+  addAIRule: (rule: Omit<AIRule, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateAIRule: (id: string, rule: Partial<AIRule>) => void;
+  deleteAIRule: (id: string) => void;
+  processTransactionWithAI: (description: string, amount: number) => Promise<Partial<Transaction>>;
   getTotalBalance: () => number;
   getMonthlyIncome: () => number;
   getMonthlyExpenses: () => number;
@@ -441,6 +496,130 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     ];
 
     setSavingsGoals(mockSavingsGoals);
+
+    // Mock entities
+    const mockEntities: Entity[] = [
+      {
+        id: '1',
+        name: 'Continente',
+        type: 'company',
+        category: 'Supermercado',
+        aliases: ['CONTINENTE', 'CONT.', 'SONAE MC'],
+        defaultCategory: 'Alimentação',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '2',
+        name: 'Galp',
+        type: 'company',
+        category: 'Combustível',
+        aliases: ['GALP', 'GALP ENERGIA'],
+        defaultCategory: 'Transporte',
+        defaultSubcategory: 'Combustível',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '3',
+        name: 'Empresa XYZ',
+        type: 'company',
+        category: 'Empregador',
+        aliases: ['EMPRESA XYZ', 'XYZ LDA'],
+        defaultCategory: 'Salário',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      }
+    ];
+
+    // Mock categories
+    const mockCategories: Category[] = [
+      {
+        id: '1',
+        name: 'Alimentação',
+        type: 'expense',
+        subcategories: ['Supermercado', 'Restaurantes', 'Takeaway', 'Mercearia'],
+        color: '#059669',
+        icon: '🍽️',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '2',
+        name: 'Transporte',
+        type: 'expense',
+        subcategories: ['Combustível', 'Transportes Públicos', 'Táxi/Uber', 'Manutenção'],
+        color: '#DC2626',
+        icon: '🚗',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '3',
+        name: 'Salário',
+        type: 'income',
+        subcategories: ['Salário Base', 'Subsídios', 'Bónus', 'Horas Extra'],
+        color: '#059669',
+        icon: '💰',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '4',
+        name: 'Habitação',
+        type: 'expense',
+        subcategories: ['Renda', 'Prestação Casa', 'Condomínio', 'Reparações'],
+        color: '#7C3AED',
+        icon: '🏠',
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      }
+    ];
+
+    // Mock AI rules
+    const mockAIRules: AIRule[] = [
+      {
+        id: '1',
+        name: 'Continente - Supermercado',
+        pattern: 'CONTINENTE',
+        patternType: 'contains',
+        entity: 'Continente',
+        category: 'Alimentação',
+        subcategory: 'Supermercado',
+        tags: ['supermercado', 'essencial'],
+        confidence: 0.95,
+        priority: 1,
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      },
+      {
+        id: '2',
+        name: 'Galp - Combustível',
+        pattern: 'GALP',
+        patternType: 'contains',
+        entity: 'Galp',
+        category: 'Transporte',
+        subcategory: 'Combustível',
+        tags: ['combustível', 'transporte'],
+        confidence: 0.9,
+        priority: 1,
+        active: true,
+        createdAt: '2023-01-01T10:00:00Z',
+        updatedAt: '2023-01-01T10:00:00Z'
+      }
+    ];
+
+    setEntities(mockEntities);
+    setCategories(mockCategories);
+    setAIRules(mockAIRules);
   }, []);
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
@@ -704,6 +883,111 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }));
   };
 
+  const addEntity = (entity: Omit<Entity, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newEntity: Entity = {
+      ...entity,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setEntities(prev => [...prev, newEntity]);
+  };
+
+  const updateEntity = (id: string, updatedEntity: Partial<Entity>) => {
+    setEntities(prev => prev.map(entity =>
+      entity.id === id ? { ...entity, ...updatedEntity, updatedAt: new Date().toISOString() } : entity
+    ));
+  };
+
+  const deleteEntity = (id: string) => {
+    setEntities(prev => prev.filter(entity => entity.id !== id));
+  };
+
+  const addCategory = (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newCategory: Category = {
+      ...category,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setCategories(prev => [...prev, newCategory]);
+  };
+
+  const updateCategory = (id: string, updatedCategory: Partial<Category>) => {
+    setCategories(prev => prev.map(category =>
+      category.id === id ? { ...category, ...updatedCategory, updatedAt: new Date().toISOString() } : category
+    ));
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(category => category.id !== id));
+  };
+
+  const addAIRule = (rule: Omit<AIRule, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRule: AIRule = {
+      ...rule,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setAIRules(prev => [...prev, newRule]);
+  };
+
+  const updateAIRule = (id: string, updatedRule: Partial<AIRule>) => {
+    setAIRules(prev => prev.map(rule =>
+      rule.id === id ? { ...rule, ...updatedRule, updatedAt: new Date().toISOString() } : rule
+    ));
+  };
+
+  const deleteAIRule = (id: string) => {
+    setAIRules(prev => prev.filter(rule => rule.id !== id));
+  };
+
+  const processTransactionWithAI = async (description: string, amount: number): Promise<Partial<Transaction>> => {
+    // Simulate AI processing
+    const activeRules = aiRules.filter(rule => rule.active);
+    
+    for (const rule of activeRules.sort((a, b) => b.priority - a.priority)) {
+      let matches = false;
+      
+      switch (rule.patternType) {
+        case 'contains':
+          matches = description.toUpperCase().includes(rule.pattern.toUpperCase());
+          break;
+        case 'startsWith':
+          matches = description.toUpperCase().startsWith(rule.pattern.toUpperCase());
+          break;
+        case 'endsWith':
+          matches = description.toUpperCase().endsWith(rule.pattern.toUpperCase());
+          break;
+        case 'regex':
+          try {
+            const regex = new RegExp(rule.pattern, 'i');
+            matches = regex.test(description);
+          } catch (e) {
+            matches = false;
+          }
+          break;
+      }
+      
+      if (matches) {
+        return {
+          entity: rule.entity,
+          category: rule.category,
+          subcategory: rule.subcategory,
+          tags: rule.tags,
+          aiProcessed: true,
+          confidence: rule.confidence
+        };
+      }
+    }
+    
+    return { aiProcessed: false };
+  };
+
   const getTotalBalance = () => {
     return accounts
       .filter(account => account.status === 'active')
@@ -770,7 +1054,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       recurringTransactions,
       assets,
       savingsGoals,
+      entities,
       categories,
+      aiRules,
       addTransaction,
       updateTransaction,
       deleteTransaction,
@@ -790,6 +1076,16 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       updateSavingsGoal,
       deleteSavingsGoal,
       addSavingsTransaction,
+      addEntity,
+      updateEntity,
+      deleteEntity,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      addAIRule,
+      updateAIRule,
+      deleteAIRule,
+      processTransactionWithAI,
       getTotalBalance,
       getMonthlyIncome,
       getMonthlyExpenses,

@@ -13,6 +13,7 @@ import { AIAdvisor } from './components/ai/AIAdvisor';
 import { SettingsManager } from './components/settings/SettingsManager';
 import { ImportExport } from './components/import-export/ImportExport';
 import { SavingsManager } from './components/savings/SavingsManager';
+import { DataManagement } from './components/data-management/DataManagement';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider } from './contexts/FinanceContext';
 import { Login } from './components/auth/Login';
@@ -58,6 +59,8 @@ const AppContent = () => {
         return <AIAdvisor />;
       case 'import-export':
         return <ImportExport />;
+      case 'data-management':
+        return <DataManagement />;
       case 'settings':
         return <SettingsManager />;
       default:

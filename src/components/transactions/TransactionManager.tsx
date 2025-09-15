@@ -4,13 +4,14 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { TransactionForm } from './TransactionForm';
 
 export const TransactionManager = () => {
-  const { transactions, deleteTransaction, categories, accounts } = useFinance();
+  const { transactions, deleteTransaction, categories, accounts, entities } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
     type: '',
     category: '',
+    entity: '',
     account: '',
     dateFrom: '',
     dateTo: '',
@@ -26,6 +27,7 @@ export const TransactionManager = () => {
       
       const matchesType = filters.type === '' || t.type === filters.type;
       const matchesCategory = filters.category === '' || t.category === filters.category;
+      const matchesEntity = filters.entity === '' || t.entity === filters.entity;
       const matchesAccount = filters.account === '' || t.account === filters.account || t.toAccount === filters.account;
       
       const matchesDateFrom = filters.dateFrom === '' || new Date(t.date) >= new Date(filters.dateFrom);
@@ -35,6 +37,7 @@ export const TransactionManager = () => {
       const matchesAmountMax = filters.amountMax === '' || t.amount <= parseFloat(filters.amountMax);
 
       return matchesSearch && matchesType && matchesCategory && matchesAccount && 
+             matchesEntity &&
              matchesDateFrom && matchesDateTo && matchesAmountMin && matchesAmountMax;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -235,8 +238,20 @@ export const TransactionManager = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todas as categorias</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {categories.filter(cat => cat.active).map(category => (
+              <option key={category.id} value={category.name}>{category.name}</option>
+            ))}
+          </select>
+
+          {/* Entity Filter */}
+          <select
+            value={filters.entity}
+            onChange={(e) => handleFilterChange('entity', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Todas as entidades</option>
+            {entities.filter(e => e.active).map(entity => (
+              <option key={entity.id} value={entity.name}>{entity.name}</option>
             ))}
           </select>
 
@@ -344,7 +359,9 @@ export const TransactionManager = () => {
                           </span>
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          {transaction.entity && <span>👤 {transaction.entity}</span>}
                           <span>{transaction.category}</span>
+                          {transaction.subcategory && <span>• {transaction.subcategory}</span>}
                           <span>
                             {fromAccount ? fromAccount.name : 'Conta não encontrada'}
                             {transaction.type === 'transfer' && toAccount && (
@@ -354,6 +371,9 @@ export const TransactionManager = () => {
                           <span>{new Date(transaction.date).toLocaleDateString('pt-PT')}</span>
                           {transaction.location && (
                             <span>📍 {transaction.location}</span>
+                          )}
+                          {transaction.aiProcessed && (
+                            <span className="text-blue-600 text-xs">🤖 AI</span>
                           )}
                         </div>
                         {transaction.tags && transaction.tags.length > 0 && (

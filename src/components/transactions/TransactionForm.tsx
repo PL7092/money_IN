@@ -8,11 +8,12 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, onClose }) => {
-  const { addTransaction, updateTransaction, categories, accounts } = useFinance();
+  const { addTransaction, updateTransaction, categories, accounts, entities, processTransactionWithAI } = useFinance();
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',
     description: '',
+    entity: '',
     category: '',
     subcategory: '',
     account: '',
@@ -22,6 +23,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     location: '',
     recurring: false
   });
+  const [aiSuggestions, setAiSuggestions] = useState<Partial<Transaction> | null>(null);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
 
   useEffect(() => {
     if (transaction) {
@@ -29,6 +32,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         type: transaction.type,
         amount: transaction.amount.toString(),
         description: transaction.description,
+        entity: transaction.entity || '',
         category: transaction.category,
         subcategory: transaction.subcategory || '',
         account: transaction.account,
@@ -48,6 +52,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
       type: formData.type,
       amount: parseFloat(formData.amount),
       description: formData.description,
+      entity: formData.entity || undefined,
       category: formData.type === 'transfer' ? 'Transferência' : formData.category,
       subcategory: formData.subcategory || undefined,
       account: formData.account,
@@ -73,6 +78,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+  };
+
+  const handleDescriptionChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const description = e.target.value;
+    setFormData(prev => ({ ...prev, description }));
+    
+    // Process with AI if description is long enough
+    if (description.length > 3 && formData.amount) {
+      try {
+        const suggestions = await processTransactionWithAI(description, parseFloat(formData.amount));
+        if (suggestions.aiProcessed) {
+          setAiSuggestions(suggestions);
+          setShowAiSuggestions(true);
+        }
+      } catch (error) {
+        console.error('AI processing error:', error);
+      }
+    }
+  };
+
+  const applyAiSuggestions = () => {
+    if (aiSuggestions) {
+      setFormData(prev => ({
+        ...prev,
+        entity: aiSuggestions.entity || prev.entity,
+        category: aiSuggestions.category || prev.category,
+        subcategory: aiSuggestions.subcategory || prev.subcategory,
+        tags: aiSuggestions.tags ? aiSuggestions.tags.join(', ') : prev.tags
+      }));
+      setShowAiSuggestions(false);
+    }
   };
 
   const handleTypeChange = (type: 'income' | 'expense' | 'transfer') => {
@@ -191,7 +227,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               type="text"
               name="description"
               value={formData.description}
-              onChange={handleChange}
+              onChange={handleDescriptionChange}
               required
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
                 formData.type === 'income' ? 'focus:ring-green-500' :
@@ -204,6 +240,67 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                 'Ex: Transferência para Poupança'
               }
             />
+          </div>
+
+          {/* AI Suggestions */}
+          {showAiSuggestions && aiSuggestions && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-blue-900 flex items-center">
+                  🤖 Sugestões da AI (Confiança: {((aiSuggestions.confidence || 0) * 100).toFixed(0)}%)
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowAiSuggestions(false)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-2 text-sm">
+                {aiSuggestions.entity && (
+                  <p><strong>Entidade:</strong> {aiSuggestions.entity}</p>
+                )}
+                {aiSuggestions.category && (
+                  <p><strong>Categoria:</strong> {aiSuggestions.category}</p>
+                )}
+                {aiSuggestions.subcategory && (
+                  <p><strong>Subcategoria:</strong> {aiSuggestions.subcategory}</p>
+                )}
+                {aiSuggestions.tags && (
+                  <p><strong>Tags:</strong> {aiSuggestions.tags.join(', ')}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={applyAiSuggestions}
+                className="mt-3 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+              >
+                Aplicar Sugestões
+              </button>
+            </div>
+          )}
+
+          {/* Entity */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Entidade
+            </label>
+            <select
+              name="entity"
+              value={formData.entity}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
+                formData.type === 'income' ? 'focus:ring-green-500' :
+                formData.type === 'expense' ? 'focus:ring-red-500' :
+                'focus:ring-blue-500'
+              }`}
+            >
+              <option value="">Seleccionar entidade (opcional)</option>
+              {entities.filter(e => e.active).map(entity => (
+                <option key={entity.id} value={entity.name}>{entity.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Accounts */}
@@ -270,8 +367,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
                   }`}
                 >
                   <option value="">Seleccionar categoria</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
+                  {categories
+                    .filter(cat => cat.active && (cat.type === formData.type || cat.type === 'both'))
+                    .map(category => (
+                    <option key={category.id} value={category.name}>{category.name}</option>
                   ))}
                 </select>
               </div>
@@ -302,16 +401,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Subcategoria
               </label>
-              <input
-                type="text"
+              <select
                 name="subcategory"
                 value={formData.subcategory}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${
                   formData.type === 'income' ? 'focus:ring-green-500' : 'focus:ring-red-500'
                 }`}
-                placeholder="Ex: Mercearia, Combustível"
-              />
+              >
+                <option value="">Seleccionar subcategoria (opcional)</option>
+                {formData.category && categories
+                  .find(cat => cat.name === formData.category)
+                  ?.subcategories.map(subcategory => (
+                    <option key={subcategory} value={subcategory}>{subcategory}</option>
+                  ))}
+              </select>
             </div>
           )}
 
