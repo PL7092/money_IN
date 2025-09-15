@@ -196,6 +196,7 @@ export interface AIRule {
   createdAt: string;
   updatedAt: string;
 }
+
 interface FinanceContextType {
   transactions: Transaction[];
   accounts: Account[];
@@ -1038,42 +1039,6 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       month: '2-digit',
       year: 'numeric'
     });
-  };
-      let matches = false;
-      
-      switch (rule.patternType) {
-        case 'contains':
-          matches = description.toUpperCase().includes(rule.pattern.toUpperCase());
-          break;
-        case 'startsWith':
-          matches = description.toUpperCase().startsWith(rule.pattern.toUpperCase());
-          break;
-        case 'endsWith':
-          matches = description.toUpperCase().endsWith(rule.pattern.toUpperCase());
-          break;
-        case 'regex':
-          try {
-            const regex = new RegExp(rule.pattern, 'i');
-            matches = regex.test(description);
-          } catch (e) {
-            matches = false;
-          }
-          break;
-      }
-      
-      if (matches) {
-        return {
-          entity: rule.entity,
-          category: rule.category,
-          subcategory: rule.subcategory,
-          tags: rule.tags,
-          aiProcessed: true,
-          confidence: rule.confidence
-        };
-      }
-    }
-    
-    return { aiProcessed: false };
   };
 
   const getTotalBalance = () => {
