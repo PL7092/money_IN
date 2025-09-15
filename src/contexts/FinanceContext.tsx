@@ -262,11 +262,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
-
-  const categories = [
-    'Alimentação', 'Transporte', 'Habitação', 'Saúde', 'Educação',
-    'Entretenimento', 'Compras', 'Seguros', 'Investimentos', 'Outros'
-  ];
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [aiRules, setAIRules] = useState<AIRule[]>([]);
 
   // Initialize with mock data
   useEffect(() => {
