@@ -61,14 +61,56 @@ export const BudgetManager = () => {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Month/Year Selector */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filtrar por Período</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mês
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {new Date(2024, i, 1).toLocaleDateString('pt-PT', { month: 'long' })}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ano
+              </label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 5 }, (_, i) => {
+                  const year = new Date().getFullYear() + i - 2;
+                  return <option key={year} value={year}>{year}</option>;
+                })}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="bg-blue-100 rounded-lg p-3 mr-4">
               <Target className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Orçamentos ({currentMonthName})</p>
+              <p className="text-sm text-gray-600">Orçamentos</p>
               <p className="text-2xl font-bold text-gray-900">{displayBudgets.length}</p>
+              <p className="text-xs text-gray-500 mt-1">{currentMonthName}</p>
             </div>
           </div>
         </div>
@@ -83,6 +125,7 @@ export const BudgetManager = () => {
               <p className="text-2xl font-bold text-gray-900">
                 {displayBudgets.filter(b => (b.spent / b.limit) * 100 < 80).length}
               </p>
+              <p className="text-xs text-gray-500 mt-1">Abaixo de 80%</p>
             </div>
           </div>
         </div>
@@ -97,6 +140,7 @@ export const BudgetManager = () => {
               <p className="text-2xl font-bold text-gray-900">
                 {displayBudgets.filter(b => (b.spent / b.limit) * 100 >= 100).length}
               </p>
+              <p className="text-xs text-gray-500 mt-1">100% ou mais</p>
             </div>
           </div>
         </div>
