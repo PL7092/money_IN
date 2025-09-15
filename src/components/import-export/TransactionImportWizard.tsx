@@ -149,7 +149,6 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
         return parseTextFile(file);
       default:
         // Try to parse as text file for unknown extensions
-        return parseTextFile(file);
     }
   };
 
@@ -160,13 +159,9 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
         try {
           const text = e.target?.result as string;
           const parsedTransactions = parseAnyTextFormat(text);
-          resolve(parsedTransactions);
+        else if (!amount && isAmountString(col)) {
         } catch (error) {
           reject(error);
-        }
-      };
-      reader.readAsText(file);
-    });
   };
 
   const parseAnyTextFormat = (text: string): ImportedTransaction[] => {
@@ -187,7 +182,6 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           parsed: parsedData,
           aiSuggestions: { confidence: 0 },
           userOverrides: {},
-          status: 'pending',
           isDuplicate: false
         });
       }
