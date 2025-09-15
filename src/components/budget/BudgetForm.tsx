@@ -119,7 +119,9 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
             >
               <option value="">Seleccionar categoria</option>
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <option key={typeof category === 'string' ? category : category.id} value={typeof category === 'string' ? category : category.name}>
+                  {typeof category === 'string' ? category : category.name}
+                </option>
               ))}
             </select>
           </div>
