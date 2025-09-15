@@ -149,6 +149,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
         return parseTextFile(file);
       default:
         // Try to parse as text file for unknown extensions
+        return parseTextFile(file);
     }
   };
 
@@ -159,9 +160,13 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
         try {
           const text = e.target?.result as string;
           const parsedTransactions = parseAnyTextFormat(text);
-        else if (!amount && isAmountString(col)) {
+          resolve(parsedTransactions);
         } catch (error) {
           reject(error);
+        }
+      };
+      reader.readAsText(file);
+    });
   };
 
   const parseAnyTextFormat = (text: string): ImportedTransaction[] => {
@@ -182,6 +187,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
           parsed: parsedData,
           aiSuggestions: { confidence: 0 },
           userOverrides: {},
+          status: 'pending',
           isDuplicate: false
         });
       }
@@ -363,7 +369,7 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
       if (isAmount(part)) {
         if (!amount) {
           amount = normalizeAmount(part);
-        } else {
+        } else if (!isAmountString(part)) {
           // Second amount might be balance
           balance = normalizeAmount(part);
         }
@@ -397,6 +403,16 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
   };
 
   const isAmount = (str: string): boolean => {
+    const amountPatterns = [
+      /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
+      /^[+-]?\d+[.,]\d{2}$/,
+      /^[+-]?\d+$/
+    ];
+    
+    return amountPatterns.some(pattern => pattern.test(str));
+  };
+
+  const isAmountString = (str: string): boolean => {
     const amountPatterns = [
       /^[+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}$/,
       /^[+-]?\d+[.,]\d{2}$/,
