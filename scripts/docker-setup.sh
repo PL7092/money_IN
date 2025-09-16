@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# FinanceFlow Docker Setup Script
-# Este script automatiza a configuração inicial do Docker
+# FinanceFlow Docker Setup Script for MariaDB
+# Este script automatiza a configuração inicial do Docker com MariaDB
 
 set -e
 
-echo "🚀 FinanceFlow - Configuração Docker"
-echo "===================================="
+echo "🚀 FinanceFlow - Configuração Docker (MariaDB)"
+echo "=============================================="
 
 # Verificar se Docker está instalado
 if ! command -v docker &> /dev/null; then
@@ -35,9 +35,10 @@ echo "📁 Criando diretórios necessários..."
 mkdir -p backups
 mkdir -p uploads
 mkdir -p logs
+mkdir -p database/mariadb-init
 
 # Configurar permissões
-chmod 755 backups uploads logs
+chmod 755 backups uploads logs database
 
 # Copiar ficheiro de ambiente se não existir
 if [ ! -f .env ]; then
@@ -64,12 +65,11 @@ check_port() {
 }
 
 check_port 3000 "FinanceFlow App"
-check_port 5432 "PostgreSQL"
-check_port 6379 "Redis"
+check_port 3306 "MariaDB"
 
 # Construir e iniciar serviços
 echo ""
-echo "🏗️  Construindo e iniciando serviços..."
+echo "🏗️  Construindo e iniciando serviços MariaDB..."
 echo "   Isto pode demorar alguns minutos na primeira vez..."
 
 # Construir imagens
@@ -104,8 +104,7 @@ wait_for_service() {
 }
 
 # Aguardar pelos serviços
-wait_for_service postgres
-wait_for_service redis
+wait_for_service mariadb
 wait_for_service financeflow
 
 # Verificar estado final
@@ -122,9 +121,9 @@ echo "   URL: http://localhost:3000"
 echo "   Email: demo@financeflow.local"
 echo "   Password: demo123"
 echo ""
-echo "🗄️  Acesso à Base de Dados:"
+echo "🗄️  Acesso à Base de Dados MariaDB:"
 echo "   Host: localhost"
-echo "   Porta: 5432"
+echo "   Porta: 3306"
 echo "   Base de Dados: financeflow"
 echo "   Utilizador: financeflow_user"
 echo "   Password: financeflow_password"
@@ -135,8 +134,16 @@ echo "   Parar: docker-compose down"
 echo "   Reiniciar: docker-compose restart"
 echo "   Backup: docker-compose run --rm backup"
 echo ""
+echo "🐳 Para Unraid:"
+echo "   1. Instale o plugin 'Compose Manager'"
+echo "   2. Crie nova stack com nome 'FinanceFlow'"
+echo "   3. Cole o conteúdo do docker-compose.yml"
+echo "   4. Configure variáveis de ambiente"
+echo "   5. Inicie a stack"
+echo ""
 echo "⚠️  Importante:"
 echo "   - Edite o ficheiro .env para configurações de produção"
 echo "   - Configure backups regulares"
 echo "   - Altere passwords padrão para produção"
+echo "   - No Unraid, use caminhos /mnt/user/appdata/financeflow"
 echo ""

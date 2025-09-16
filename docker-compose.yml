@@ -1,44 +1,23 @@
-services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: financeflow_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: financeflow
-      POSTGRES_USER: financeflow_user
-      POSTGRES_PASSWORD: financeflow_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
-    networks:
-      - financeflow_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U financeflow_user -d financeflow"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+version: '3.8'
 
-  # MariaDB Database (alternative to PostgreSQL)
+services:
+  # MariaDB Database (primary and only database)
   mariadb:
     image: mariadb:11
     container_name: financeflow_mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: financeflow_root_password
-      MYSQL_DATABASE: financeflow
-      MYSQL_USER: financeflow_user
-      MYSQL_PASSWORD: financeflow_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-financeflow_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-financeflow}
+      MYSQL_USER: ${MYSQL_USER:-financeflow_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-financeflow_password}
       MYSQL_CHARSET: utf8mb4
       MYSQL_COLLATION: utf8mb4_unicode_ci
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./database/mariadb-init:/docker-entrypoint-initdb.d
     ports:
-      - "3306:3306"
+      - "${MARIADB_PORT:-3306}:3306"
     networks:
       - financeflow_network
     healthcheck:
@@ -46,26 +25,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    profiles:
-      - mariadb
-
-  # Redis for caching and sessions
-  redis:
-    image: redis:7-alpine
-    container_name: financeflow_redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass financeflow_redis_password
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - financeflow_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-connections=100
+      --query-cache-size=32M
+      --query-cache-type=1
 
   # FinanceFlow Application
   financeflow:
@@ -75,17 +41,23 @@ services:
     container_name: financeflow_app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://financeflow_user:financeflow_password@postgres:5432/financeflow
-      - REDIS_URL=redis://:financeflow_redis_password@redis:6379
-      - APP_SECRET=your_super_secret_key_change_this_in_production
-      - CORS_ORIGIN=http://localhost:3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=mysql://${MYSQL_USER:-financeflow_user}:${MYSQL_PASSWORD:-financeflow_password}@mariadb:3306/${MYSQL_DATABASE:-financeflow}
+      - APP_SECRET=${APP_SECRET:-your_super_secret_key_change_this_in_production}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_change_this}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - UPLOAD_PATH=/app/uploads
+      # AI API Keys (optional)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      mariadb:
         condition: service_healthy
     networks:
       - financeflow_network
@@ -95,42 +67,47 @@ services:
       timeout: 10s
       retries: 3
 
-  # Backup service
+  # Backup service for MariaDB
   backup:
-    image: postgres:15-alpine
+    image: mariadb:11
     container_name: financeflow_backup
     restart: "no"
     environment:
-      POSTGRES_DB: financeflow
-      POSTGRES_USER: financeflow_user
-      POSTGRES_PASSWORD: financeflow_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-financeflow}
+      MYSQL_USER: ${MYSQL_USER:-financeflow_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-financeflow_password}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mariadb_data:/var/lib/mysql
       - ./backups:/backups
     networks:
       - financeflow_network
     command: |
       sh -c '
-        while ! pg_isready -h postgres -U financeflow_user; do
-          echo "Waiting for database..."
+        while ! mysqladmin ping -h mariadb -u ${MYSQL_USER:-financeflow_user} -p${MYSQL_PASSWORD:-financeflow_password} --silent; do
+          echo "Waiting for MariaDB..."
           sleep 2
         done
         echo "Creating backup..."
-        pg_dump -h postgres -U financeflow_user -d financeflow > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+        mysqldump -h mariadb -u ${MYSQL_USER:-financeflow_user} -p${MYSQL_PASSWORD:-financeflow_password} ${MYSQL_DATABASE:-financeflow} > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
         echo "Backup completed!"
       '
     depends_on:
-      postgres:
+      mariadb:
         condition: service_healthy
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
   mariadb_data:
+    driver: local
+  uploads_data:
+    driver: local
+  logs_data:
     driver: local
 
 networks:
   financeflow_network:
     driver: bridge
+
+# Unraid specific labels for better integration
+x-unraid-labels:
+  - "net.unraid.docker.managed=composeman"
+  - "net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/mariadb-icon.png"

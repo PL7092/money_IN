@@ -68,7 +68,7 @@ export const SettingsManager = () => {
     { id: 'preferences', label: 'Preferências', icon: Palette },
     { id: 'security', label: 'Segurança', icon: Shield },
     { id: 'ai-apis', label: 'APIs de AI', icon: Brain },
-    { id: 'database', label: 'Base de Dados', icon: Settings },
+    { id: 'database', label: 'MariaDB', icon: Settings },
   ];
 
   const updateSetting = (category: string, key: string, value: any) => {

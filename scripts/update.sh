@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# FinanceFlow Update Script
-# Atualiza a aplicação mantendo os dados
+# FinanceFlow Update Script for MariaDB
+# Atualiza a aplicação mantendo os dados MariaDB
 
 set -e
 
-echo "🔄 FinanceFlow - Atualização da Aplicação"
-echo "========================================"
+echo "🔄 FinanceFlow - Atualização da Aplicação (MariaDB)"
+echo "================================================="
 
 # Verificar se há alterações não guardadas
 if [ -d ".git" ]; then
@@ -21,7 +21,7 @@ fi
 echo "📦 Criando backup de segurança..."
 ./scripts/backup.sh
 
-# Parar aplicação (manter base de dados)
+# Parar aplicação (manter MariaDB)
 echo "⏸️  Parando aplicação..."
 docker-compose stop financeflow
 
@@ -35,8 +35,8 @@ fi
 echo "🏗️  Reconstruindo aplicação..."
 docker-compose build financeflow
 
-# Executar migrações (se necessário)
-echo "🗄️  Verificando migrações da base de dados..."
+# Executar migrações MariaDB (se necessário)
+echo "🗄️  Verificando migrações da base de dados MariaDB..."
 # Aqui seria executado um script de migração se necessário
 
 # Reiniciar aplicação
@@ -50,6 +50,7 @@ sleep 10
 if docker-compose ps financeflow | grep -q "Up"; then
     echo "✅ Atualização concluída com sucesso!"
     echo "   Aplicação: http://localhost:3000"
+    echo "   MariaDB: localhost:3306"
 else
     echo "❌ Erro na atualização. Verificar logs:"
     docker-compose logs financeflow
@@ -59,3 +60,8 @@ fi
 echo ""
 echo "📊 Estado dos serviços:"
 docker-compose ps
+
+echo ""
+echo "🐳 Para Unraid:"
+echo "   Use o Compose Manager para atualizar a stack"
+echo "   Ou execute este script via User Scripts plugin"

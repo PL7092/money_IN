@@ -1,25 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Server, Shield, Download, Upload, RefreshCw, AlertCircle, CheckCircle, Settings } from 'lucide-react';
-import { MariaDBSetup } from './MariaDBSetup';
 
 export const DatabaseManager = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-  const [dbType, setDbType] = useState<'postgresql' | 'mariadb'>('postgresql');
   const [dbConfig, setDbConfig] = useState({
-    postgresql: {
-      host: 'postgres',
-      port: 5432,
-      database: 'financeflow',
-      username: 'financeflow_user',
-      password: 'financeflow_password'
-    },
-    mariadb: {
-      host: 'mariadb',
-      port: 3306,
-      database: 'financeflow',
-      username: 'financeflow_user',
-      password: 'financeflow_password'
-    }
+    host: 'mariadb',
+    port: 3306,
+    database: 'financeflow',
+    username: 'financeflow_user',
+    password: 'financeflow_password'
   });
   const [dbStats, setDbStats] = useState({
     totalTransactions: 0,
@@ -29,7 +18,6 @@ export const DatabaseManager = () => {
     lastBackup: null as string | null
   });
   const [backupStatus, setBackupStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle');
-  const [showMariaDBSetup, setShowMariaDBSetup] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -38,7 +26,7 @@ export const DatabaseManager = () => {
 
   const checkConnection = async () => {
     try {
-      // Simular verificação de conexão
+      // Simular verificação de conexão MariaDB
       await new Promise(resolve => setTimeout(resolve, 1000));
       setConnectionStatus('connected');
     } catch (error) {
@@ -74,28 +62,11 @@ export const DatabaseManager = () => {
     await checkConnection();
   };
 
-  const switchDatabase = async (newDbType: 'postgresql' | 'mariadb') => {
-    if (confirm(`Tem a certeza que deseja mudar para ${newDbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}? Esta ação requer reiniciar os serviços.`)) {
-      setDbType(newDbType);
-      // In a real implementation, this would update docker-compose configuration
-      console.log(`Switching to ${newDbType}`);
-    }
-  };
-
-  const updateDbConfig = (type: 'postgresql' | 'mariadb', field: string, value: string | number) => {
+  const updateDbConfig = (field: string, value: string | number) => {
     setDbConfig(prev => ({
       ...prev,
-      [type]: {
-        ...prev[type],
-        [field]: value
-      }
+      [field]: value
     }));
-  };
-
-  const handleMariaDBSetupSuccess = () => {
-    setDbType('mariadb');
-    checkConnection();
-    loadStats();
   };
 
   return (
@@ -105,9 +76,9 @@ export const DatabaseManager = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
             <Database className="mr-3 text-blue-600" size={32} />
-            Gestão da Base de Dados
+            Gestão da Base de Dados MariaDB
           </h2>
-          <p className="text-gray-600">Configuração e monitorização da base de dados PostgreSQL</p>
+          <p className="text-gray-600">Configuração e monitorização da base de dados MariaDB</p>
         </div>
       </div>
 
@@ -116,36 +87,18 @@ export const DatabaseManager = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <Server className="mr-2" size={20} />
-            Estado da Conexão
+            Estado da Conexão MariaDB
           </h3>
-          <div className="flex items-center space-x-3">
-            <select
-              value={dbType}
-              onChange={(e) => switchDatabase(e.target.value as 'postgresql' | 'mariadb')}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="postgresql">PostgreSQL</option>
-              <option value="mariadb">MariaDB</option>
-            </select>
-            {dbType === 'mariadb' && (
-              <button
-                onClick={() => setShowMariaDBSetup(true)}
-                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-              >
-                Configurar MariaDB
-              </button>
-            )}
-            <button
-              onClick={testConnection}
-              className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-            >
-              <RefreshCw size={16} className="mr-1" />
-              Testar Conexão
-            </button>
-          </div>
+          <button
+            onClick={testConnection}
+            className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+          >
+            <RefreshCw size={16} className="mr-1" />
+            Testar Conexão
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full mr-3 ${
               connectionStatus === 'connected' ? 'bg-green-500' :
@@ -153,22 +106,12 @@ export const DatabaseManager = () => {
               'bg-yellow-500 animate-pulse'
             }`} />
             <div>
-              <p className="text-sm font-medium text-gray-900">
-                {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
-              </p>
+              <p className="text-sm font-medium text-gray-900">MariaDB</p>
               <p className="text-xs text-gray-600">
                 {connectionStatus === 'connected' ? 'Conectado' :
                  connectionStatus === 'disconnected' ? 'Desconectado' :
                  'Verificando...'}
               </p>
-            </div>
-          </div>
-
-          <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-green-500 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Redis</p>
-              <p className="text-xs text-gray-600">Conectado</p>
             </div>
           </div>
 
@@ -297,9 +240,7 @@ export const DatabaseManager = () => {
 
       {/* Database Configuration */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Configuração da Base de Dados - {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuração MariaDB</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -309,8 +250,8 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value={dbConfig[dbType].host}
-                onChange={(e) => updateDbConfig(dbType, 'host', e.target.value)}
+                value={dbConfig.host}
+                onChange={(e) => updateDbConfig('host', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -321,8 +262,8 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="number"
-                value={dbConfig[dbType].port}
-                onChange={(e) => updateDbConfig(dbType, 'port', parseInt(e.target.value))}
+                value={dbConfig.port}
+                onChange={(e) => updateDbConfig('port', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -333,8 +274,8 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value={dbConfig[dbType].database}
-                onChange={(e) => updateDbConfig(dbType, 'database', e.target.value)}
+                value={dbConfig.database}
+                onChange={(e) => updateDbConfig('database', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -347,8 +288,8 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value={dbConfig[dbType].username}
-                onChange={(e) => updateDbConfig(dbType, 'username', e.target.value)}
+                value={dbConfig.username}
+                onChange={(e) => updateDbConfig('username', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -359,8 +300,8 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="password"
-                value={dbConfig[dbType].password}
-                onChange={(e) => updateDbConfig(dbType, 'password', e.target.value)}
+                value={dbConfig.password}
+                onChange={(e) => updateDbConfig('password', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -371,10 +312,7 @@ export const DatabaseManager = () => {
               </label>
               <input
                 type="text"
-                value={dbType === 'postgresql' 
-                  ? `postgresql://${dbConfig.postgresql.username}:***@${dbConfig.postgresql.host}:${dbConfig.postgresql.port}/${dbConfig.postgresql.database}`
-                  : `mysql://${dbConfig.mariadb.username}:***@${dbConfig.mariadb.host}:${dbConfig.mariadb.port}/${dbConfig.mariadb.database}`
-                }
+                value={`mysql://${dbConfig.username}:***@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
               />
@@ -387,7 +325,7 @@ export const DatabaseManager = () => {
             <div>
               <h4 className="font-medium text-gray-900">Configurações Ativas</h4>
               <p className="text-sm text-gray-600">
-                Base de dados atual: {dbType === 'postgresql' ? 'PostgreSQL' : 'MariaDB'}
+                Base de dados: MariaDB 11
               </p>
             </div>
             <div className="flex space-x-3">
@@ -409,12 +347,12 @@ export const DatabaseManager = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Gestão Docker</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border border-gray-200 rounded-lg p-4">
             <h4 className="font-medium text-gray-900 mb-2">Comandos Básicos</h4>
             <div className="space-y-2 text-sm">
               <code className="block bg-gray-100 p-2 rounded text-xs">
-                docker-compose --profile {dbType === 'postgresql' ? 'postgres' : 'mariadb'} up -d
+                docker-compose up -d
               </code>
               <p className="text-gray-600">Iniciar todos os serviços</p>
               
@@ -425,7 +363,7 @@ export const DatabaseManager = () => {
               <p className="text-gray-600">Ver logs em tempo real</p>
               
               <code className="block bg-gray-100 p-2 rounded text-xs">
-                docker-compose exec {dbType === 'postgresql' ? 'postgres' : 'mariadb'} {dbType === 'postgresql' ? 'psql -U financeflow_user -d financeflow' : 'mysql -u financeflow_user -p financeflow'}
+                docker-compose exec mariadb mysql -u financeflow_user -p financeflow
               </code>
               <p className="text-gray-600">Aceder à base de dados</p>
             </div>
@@ -440,23 +378,67 @@ export const DatabaseManager = () => {
               <code className="block bg-gray-100 p-2 rounded text-xs">./scripts/restore.sh backup.sql.gz</code>
               <p className="text-gray-600">Restaurar backup</p>
               
-              <code className="block bg-gray-100 p-2 rounded text-xs">./scripts/update.sh</code>
-              <p className="text-gray-600">Atualizar aplicação</p>
+              <code className="block bg-gray-100 p-2 rounded text-xs">docker-compose run --rm backup</code>
+              <p className="text-gray-600">Backup via Docker</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Unraid Configuration */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuração para Unraid</h3>
+        
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-3">Instalação no Unraid</h4>
+            <ol className="text-sm text-blue-800 space-y-2 ml-4">
+              <li>1. Aceda ao Unraid WebUI → Apps → Community Applications</li>
+              <li>2. Procure por "Compose Manager" e instale</li>
+              <li>3. Crie uma nova stack com o nome "FinanceFlow"</li>
+              <li>4. Cole o conteúdo do docker-compose.yml</li>
+              <li>5. Configure as variáveis de ambiente no .env</li>
+              <li>6. Inicie a stack</li>
+            </ol>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h4 className="font-medium text-green-900 mb-3">Caminhos Recomendados no Unraid</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-green-700">Dados MariaDB:</span>
+                <code className="text-green-800">/mnt/user/appdata/financeflow/mariadb</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-green-700">Uploads:</span>
+                <code className="text-green-800">/mnt/user/appdata/financeflow/uploads</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-green-700">Backups:</span>
+                <code className="text-green-800">/mnt/user/backups/financeflow</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-green-700">Logs:</span>
+                <code className="text-green-800">/mnt/user/appdata/financeflow/logs</code>
+              </div>
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-2">Monitorização</h4>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="font-medium text-yellow-900 mb-3">Configuração de Portas</h4>
             <div className="space-y-2 text-sm">
-              <code className="block bg-gray-100 p-2 rounded text-xs">docker-compose ps</code>
-              <p className="text-gray-600">Estado dos serviços</p>
-              
-              <code className="block bg-gray-100 p-2 rounded text-xs">docker stats</code>
-              <p className="text-gray-600">Uso de recursos</p>
-              
-              <code className="block bg-gray-100 p-2 rounded text-xs">docker system df</code>
-              <p className="text-gray-600">Espaço utilizado</p>
+              <div className="flex justify-between">
+                <span className="text-yellow-700">Aplicação Web:</span>
+                <code className="text-yellow-800">3000:3000</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-yellow-700">MariaDB:</span>
+                <code className="text-yellow-800">3306:3306</code>
+              </div>
             </div>
+            <p className="text-xs text-yellow-700 mt-2">
+              Ajuste as portas conforme necessário para evitar conflitos no Unraid
+            </p>
           </div>
         </div>
       </div>
@@ -469,20 +451,24 @@ export const DatabaseManager = () => {
           <h4 className="font-medium text-gray-900 mb-3">Configuração Atual (.env)</h4>
           <div className="space-y-2 text-sm font-mono">
             <div className="flex justify-between">
-              <span className="text-gray-600">DATABASE_URL=</span>
-              <span className="text-gray-900">postgresql://financeflow_user:***@localhost:5432/financeflow</span>
+              <span className="text-gray-600">MYSQL_DATABASE=</span>
+              <span className="text-gray-900">financeflow</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">REDIS_URL=</span>
-              <span className="text-gray-900">redis://:***@localhost:6379</span>
+              <span className="text-gray-600">MYSQL_USER=</span>
+              <span className="text-gray-900">financeflow_user</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">NODE_ENV=</span>
-              <span className="text-gray-900">development</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">APP_SECRET=</span>
+              <span className="text-gray-600">MYSQL_PASSWORD=</span>
               <span className="text-gray-900">***</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">MARIADB_PORT=</span>
+              <span className="text-gray-900">3306</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">APP_PORT=</span>
+              <span className="text-gray-900">3000</span>
             </div>
           </div>
         </div>
@@ -513,8 +499,8 @@ export const DatabaseManager = () => {
           
           <button className="bg-white text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors text-left">
             <RefreshCw className="w-5 h-5 mb-2" />
-            <h4 className="font-medium">Reiniciar Serviços</h4>
-            <p className="text-sm text-blue-600">Reiniciar Docker containers</p>
+            <h4 className="font-medium">Reiniciar MariaDB</h4>
+            <p className="text-sm text-blue-600">Reiniciar container MariaDB</p>
           </button>
           
           <button className="bg-white text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors text-left">
@@ -525,47 +511,57 @@ export const DatabaseManager = () => {
         </div>
       </div>
 
-      {/* Installation Instructions */}
+      {/* Unraid Installation Guide */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Instruções de Instalação Docker</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Guia de Instalação Unraid</h3>
         
         <div className="space-y-4">
           <div>
             <h4 className="font-medium text-gray-900 mb-2">1. Pré-requisitos</h4>
             <ul className="text-sm text-gray-700 space-y-1 ml-4">
-              <li>• Docker Engine 20.10+</li>
-              <li>• Docker Compose 2.0+</li>
-              <li>• 4GB RAM disponível</li>
-              <li>• 10GB espaço em disco</li>
+              <li>• Unraid 6.10+ com Docker ativado</li>
+              <li>• Community Applications plugin instalado</li>
+              <li>• Compose Manager plugin instalado</li>
+              <li>• 2GB RAM disponível</li>
+              <li>• 5GB espaço em disco</li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">2. Configuração Inicial</h4>
-            <div className="bg-gray-100 p-3 rounded-lg text-sm font-mono">
-              <div>chmod +x scripts/*.sh</div>
-              <div>./scripts/docker-setup.sh</div>
+            <h4 className="font-medium text-gray-900 mb-2">2. Configuração no Unraid</h4>
+            <div className="bg-gray-100 p-3 rounded-lg text-sm">
+              <p className="mb-2"><strong>Stack Name:</strong> FinanceFlow</p>
+              <p className="mb-2"><strong>Compose File:</strong> Copiar docker-compose.yml</p>
+              <p className="mb-2"><strong>Environment File:</strong> Copiar .env.example para .env</p>
+              <p><strong>Data Path:</strong> /mnt/user/appdata/financeflow</p>
             </div>
           </div>
 
           <div>
             <h4 className="font-medium text-gray-900 mb-2">3. Acesso</h4>
             <ul className="text-sm text-gray-700 space-y-1 ml-4">
-              <li>• Aplicação: <strong>http://localhost:3000</strong></li>
+              <li>• Aplicação: <strong>http://[IP-UNRAID]:3000</strong></li>
+              <li>• MariaDB: <strong>[IP-UNRAID]:3306</strong></li>
               <li>• Email: <strong>demo@financeflow.local</strong></li>
               <li>• Password: <strong>demo123</strong></li>
             </ul>
           </div>
+
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">4. Comandos Úteis Unraid</h4>
+            <div className="bg-gray-100 p-3 rounded-lg text-sm font-mono space-y-1">
+              <div># Aceder ao container MariaDB</div>
+              <div>docker exec -it financeflow_mariadb mysql -u financeflow_user -p</div>
+              <div></div>
+              <div># Backup manual</div>
+              <div>docker exec financeflow_mariadb mysqldump -u financeflow_user -p financeflow > /mnt/user/backups/financeflow/backup.sql</div>
+              <div></div>
+              <div># Ver logs da aplicação</div>
+              <div>docker logs financeflow_app -f</div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* MariaDB Setup Modal */}
-      {showMariaDBSetup && (
-        <MariaDBSetup
-          onClose={() => setShowMariaDBSetup(false)}
-          onSuccess={handleMariaDBSetupSuccess}
-        />
-      )}
     </div>
   );
 };
