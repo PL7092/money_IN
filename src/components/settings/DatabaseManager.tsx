@@ -554,7 +554,7 @@ export const DatabaseManager = () => {
               <div>docker exec -it financeflow_mariadb mysql -u financeflow_user -p</div>
               <div></div>
               <div># Backup manual</div>
-              <div>docker exec financeflow_mariadb mysqldump -u financeflow_user -p financeflow > /mnt/user/backups/financeflow/backup.sql</div>
+              <div>docker exec financeflow_mariadb mysqldump -u financeflow_user -p financeflow {'>'} mnt/user/backups/financeflow/backup.sql</div>
               <div></div>
               <div># Ver logs da aplicação</div>
               <div>docker logs financeflow_app -f</div>
